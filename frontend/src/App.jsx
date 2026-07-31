@@ -8,7 +8,7 @@ function App() {
   const [count, setCount] = useState(0)
 
   return (
-    <p>Hello San Sovath
+    <p>Hello San San
     </p>
   )
 
