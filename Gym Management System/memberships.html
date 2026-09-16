@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iron & Lime — Memberships</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app-shell"></div>
+
+  <template id="memberships-tpl">
+    <div class="space-y-6">
+      <!-- Tabs header: Active Assignments vs Membership Plans -->
+      <div class="flex border-b border-[var(--line)] gap-4">
+        <button id="tab-btn-assign" class="pb-3 text-sm font-semibold border-b-2 border-[var(--teal-900)] text-[var(--teal-900)]">Active Assignments</button>
+        <button id="tab-btn-plans" class="pb-3 text-sm font-semibold border-b-2 border-transparent text-[var(--muted)] hover:text-[var(--ink)]">Plan Catalog</button>
+      </div>
+
+      <!-- VIEW 1: ASSIGNMENTS -->
+      <div id="view-assignments" class="space-y-4">
+        <div class="card p-4 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+          <div class="flex items-center gap-2 flex-1">
+            <input id="search-ms" class="input !w-64" type="search" placeholder="Search member or plan...">
+            <select id="filter-ms-status" class="input !w-40">
+              <option value="">All Statuses</option>
+              <option value="Active">Active</option>
+              <option value="Expired">Expired</option>
+              <option value="Frozen">Frozen</option>
+              <option value="Cancelled">Cancelled</option>
+            </select>
+          </div>
+          <button id="btn-assign-plan" class="btn btn-primary flex-shrink-0">+ Assign Plan to Member</button>
+        </div>
+
+        <div class="card overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Member</th>
+                  <th>Plan Name</th>
+                  <th>Duration</th>
+                  <th>Start Date</th>
+                  <th>End Date</th>
+                  <th>Days Left</th>
+                  <th>Status</th>
+                  <th class="text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="tbl-assignments"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- VIEW 2: PLAN CATALOG -->
+      <div id="view-plans" class="space-y-4 hidden">
+        <div class="flex justify-between items-center">
+          <div>
+            <h2 class="font-display text-xl font-bold text-[var(--ink)]">Membership Plans</h2>
+            <p class="text-xs text-[var(--muted)]">Configure duration, price, and terms for packages</p>
+          </div>
+          <button id="btn-create-plan" class="btn btn-primary">+ Create New Plan</button>
+        </div>
+
+        <div id="plans-grid" class="grid md:grid-cols-3 gap-4"></div>
+      </div>
+    </div>
+  </template>
+
+  <script src="js/common.js"></script>
+  <script>
+    const outlet = renderChrome('memberships', 'Memberships & Plans');
+    outlet.innerHTML = document.getElementById('memberships-tpl').innerHTML;
+
+    // Tab switching
+    const tabAssign = document.getElementById('tab-btn-assign');
+    const tabPlans = document.getElementById('tab-btn-plans');
+    const viewAssign = document.getElementById('view-assignments');
+    const viewPlans = document.getElementById('view-plans');
+
+    tabAssign.addEventListener('click', () => {
+      tabAssign.className = 'pb-3 text-sm font-semibold border-b-2 border-[var(--teal-900)] text-[var(--teal-900)]';
+      tabPlans.className = 'pb-3 text-sm font-semibold border-b-2 border-transparent text-[var(--muted)] hover:text-[var(--ink)]';
+      viewAssign.classList.remove('hidden');
+      viewPlans.classList.add('hidden');
+      renderAssignments();
+    });
+
+    tabPlans.addEventListener('click', () => {
+      tabPlans.className = 'pb-3 text-sm font-semibold border-b-2 border-[var(--teal-900)] text-[var(--teal-900)]';
+      tabAssign.className = 'pb-3 text-sm font-semibold border-b-2 border-transparent text-[var(--muted)] hover:text-[var(--ink)]';
+      viewPlans.classList.remove('hidden');
+      viewAssign.classList.add('hidden');
+      renderPlans();
+    });
+
+    // ----------------------------------------------------
+    // Assignments logic
+    // ----------------------------------------------------
+    function renderAssignments(){
+      refreshMembershipStatuses();
+      const list = DB.get('memberships', []);
+      const search = (document.getElementById('search-ms').value || '').toLowerCase();
+      const filterSt = document.getElementById('filter-ms-status').value;
+
+      const filtered = list.filter(item => {
+        const m = memberById(item.memberId);
+        const p = planById(item.planId);
+        const mName = m ? m.fullName.toLowerCase() : '';
+        const pName = p ? p.name.toLowerCase() : '';
+        const matchSearch = !search || mName.includes(search) || pName.includes(search);
+        const matchSt = !filterSt || item.status === filterSt;
+        return matchSearch && matchSt;
+      });
+
+      const tbody = document.getElementById('tbl-assignments');
+      if (!filtered.length){
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-xs text-[var(--muted)]">No membership assignments found.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(item => {
+        const m = memberById(item.memberId);
+        const p = planById(item.planId);
+        const left = daysUntil(item.endDate);
+
+        let badge = 'badge-success';
+        if (item.status === 'Expired')   badge = 'badge-danger';
+        if (item.status === 'Frozen')    badge = 'badge-info';
+        if (item.status === 'Cancelled') badge = 'badge-muted';
+
+        return `<tr>
+          <td>
+            <div class="font-semibold text-[var(--ink)]">${escapeHtml(m ? m.fullName : '—')}</div>
+            <div class="text-[11px] text-[var(--muted)]">${m ? m.memberCode : ''}</div>
+          </td>
+          <td class="font-medium text-xs">${escapeHtml(p ? p.name : '—')}</td>
+          <td class="text-xs text-[var(--muted)]">${p ? p.durationDays + ' days' : '—'}</td>
+          <td class="text-xs">${fmtDate(item.startDate)}</td>
+          <td class="text-xs font-medium">${fmtDate(item.endDate)}</td>
+          <td class="text-xs">
+            ${item.status==='Active'
+              ? (left < 0 ? '<span class="text-red-600 font-semibold">Expired</span>' : left + ' days')
+              : '—'}
+          </td>
+          <td><span class="badge ${badge} text-[10px]">${item.status}</span></td>
+          <td class="text-right">
+            ${item.status==='Active' ? `<button onclick="freezeMembership('${item.id}')" class="btn btn-outline btn-sm text-xs">Freeze</button>` : ''}
+            ${item.status==='Frozen' ? `<button onclick="unfreezeMembership('${item.id}')" class="btn btn-outline btn-sm text-xs">Unfreeze</button>` : ''}
+            <button onclick="renewMembershipModal('${item.id}')" class="btn btn-outline btn-sm text-xs">Renew</button>
+            <button onclick="cancelMembership('${item.id}')" class="btn btn-danger btn-sm text-xs">Cancel</button>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    // Assign plan modal
+    function showAssignModal(preMemberId){
+      const members = DB.get('members', []);
+      const plans = DB.get('plans', []);
+
+      const html = `
+        <form id="form-assign" class="p-6 space-y-4">
+          <div class="flex items-center justify-between border-b border-[var(--line)] pb-3">
+            <h3 class="font-display text-2xl font-bold text-[var(--ink)]">Assign Membership Plan</h3>
+            <button type="button" onclick="closeModal()" class="text-2xl text-[var(--muted)]">&times;</button>
+          </div>
+
+          <div>
+            <label class="field-label">Select Member *</label>
+            <select name="memberId" class="input" required>
+              <option value="">-- Choose Member --</option>
+              ${members.map(m => `<option value="${m.id}" ${preMemberId===m.id?'selected':''}>${escapeHtml(m.fullName)} (${m.memberCode})</option>`).join('')}
+            </select>
+          </div>
+
+          <div>
+            <label class="field-label">Select Plan *</label>
+            <select name="planId" id="sel-plan" class="input" required>
+              <option value="">-- Choose Plan --</option>
+              ${plans.map(p => `<option value="${p.id}" data-days="${p.durationDays}" data-price="${p.price}">${escapeHtml(p.name)} — ${p.durationDays}d (${fmtMoney(p.price)})</option>`).join('')}
+            </select>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="field-label">Start Date *</label>
+              <input type="date" name="startDate" id="ms-start" class="input" required value="${todayISO()}">
+            </div>
+            <div>
+              <label class="field-label">End Date (auto)</label>
+              <input type="date" name="endDate" id="ms-end" class="input" required readonly>
+            </div>
+          </div>
+
+          <div class="card p-3 bg-[var(--bg)] flex items-center justify-between text-xs">
+            <span>Payable Amount:</span>
+            <strong id="lbl-payable" class="text-sm text-[var(--teal-950)]">$0.00</strong>
+          </div>
+
+          <div class="flex justify-end gap-2 pt-3 border-t border-[var(--line)]">
+            <button type="button" onclick="closeModal()" class="btn btn-outline">Cancel</button>
+            <button type="submit" class="btn btn-primary">Confirm &amp; Activate</button>
+          </div>
+        </form>
+      `;
+      openModal(html);
+
+      function recalcEnd(){
+        const sel = document.getElementById('sel-plan');
+        const opt = sel.options[sel.selectedIndex];
+        if (!opt || !opt.dataset.days) return;
+        const days = parseInt(opt.dataset.days, 10);
+        const price = parseFloat(opt.dataset.price || 0);
+        const startVal = document.getElementById('ms-start').value;
+        if (startVal){
+          const d = new Date(startVal + 'T00:00:00');
+          d.setDate(d.getDate() + days);
+          document.getElementById('ms-end').value = d.toISOString().slice(0,10);
+        }
+        document.getElementById('lbl-payable').textContent = fmtMoney(price);
+      }
+
+      document.getElementById('sel-plan').addEventListener('change', recalcEnd);
+      document.getElementById('ms-start').addEventListener('change', recalcEnd);
+
+      document.getElementById('form-assign').addEventListener('submit', function(e){
+        e.preventDefault();
+        const fd = new FormData(this);
+        const mId = fd.get('memberId');
+        const pId = fd.get('planId');
+        const sDate = fd.get('startDate');
+        const eDate = fd.get('endDate');
+
+        const all = DB.get('memberships', []);
+        // Cancel existing active plans for this member
+        all.forEach(ms => {
+          if (ms.memberId === mId && ms.status === 'Active'){
+            ms.status = 'Expired';
+          }
+        });
+
+        const newId = uid('MS');
+        all.unshift({
+          id: newId,
+          memberId: mId,
+          planId: pId,
+          startDate: sDate,
+          endDate: eDate,
+          status: 'Active',
+          assignedDate: todayISO()
+        });
+        DB.set('memberships', all);
+
+        // Also record an invoice
+        const p = planById(pId);
+        const pmts = DB.get('payments', []);
+        pmts.unshift({
+          id: uid('PMT'),
+          invoiceNo: 'INV-' + (3000 + pmts.length + 1),
+          memberId: mId,
+          membershipId: newId,
+          amount: p ? p.price : 0,
+          discount: 0,
+          method: 'Cash',
+          date: todayISO(),
+          status: 'Paid'
+        });
+        DB.set('payments', pmts);
+
+        toast('Plan assigned & invoice generated', 'success');
+        closeModal();
+        renderAssignments();
+      });
+    }
+
+    function freezeMembership(id){
+      const all = DB.get('memberships', []);
+      const item = all.find(x => x.id === id);
+      if (!item) return;
+      item.status = 'Frozen';
+      DB.set('memberships', all);
+      toast('Membership frozen', 'info');
+      renderAssignments();
+    }
+
+    function unfreezeMembership(id){
+      const all = DB.get('memberships', []);
+      const item = all.find(x => x.id === id);
+      if (!item) return;
+      item.status = 'Active';
+      DB.set('memberships', all);
+      toast('Membership reactivated', 'success');
+      renderAssignments();
+    }
+
+    function cancelMembership(id){
+      if (!confirm('Are you sure you want to cancel this membership?')) return;
+      const all = DB.get('memberships', []);
+      const item = all.find(x => x.id === id);
+      if (!item) return;
+      item.status = 'Cancelled';
+      DB.set('memberships', all);
+      toast('Membership cancelled', 'warning');
+      renderAssignments();
+    }
+
+    function renewMembershipModal(msId){
+      const ms = DB.get('memberships', []).find(x => x.id === msId);
+      if (!ms) return;
+      showAssignModal(ms.memberId);
+    }
+
+    // ----------------------------------------------------
+    // Plan catalog logic
+    // ----------------------------------------------------
+    function renderPlans(){
+      const plans = DB.get('plans', []);
+      const grid = document.getElementById('plans-grid');
+
+      grid.innerHTML = plans.map(p => `
+        <div class="card p-5 flex flex-col justify-between hover:border-[var(--teal-700)] transition">
+          <div>
+            <div class="flex items-center justify-between">
+              <span class="badge badge-info text-[10px]">${p.type}</span>
+              <span class="font-display text-2xl font-bold text-[var(--teal-950)]">${fmtMoney(p.price)}</span>
+            </div>
+            <h3 class="font-display text-xl font-bold text-[var(--ink)] mt-2">${escapeHtml(p.name)}</h3>
+            <p class="text-xs text-[var(--muted)] mt-1">${p.durationDays} days full gym access</p>
+            <p class="text-xs text-[var(--ink-soft)] mt-3 leading-relaxed">${escapeHtml(p.description || '')}</p>
+          </div>
+          <div class="flex justify-end gap-2 pt-4 mt-4 border-t border-[var(--line)]">
+            <button onclick="editPlanModal('${p.id}')" class="btn btn-outline btn-sm text-xs">Edit</button>
+            <button onclick="deletePlan('${p.id}')" class="btn btn-danger btn-sm text-xs">Del</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function showPlanModal(planId){
+      const isEdit = Boolean(planId);
+      const p = isEdit ? planById(planId) : { name:'', type:'Monthly', durationDays:30, price:40, description:'' };
+
+      const html = `
+        <form id="form-plan" class="p-6 space-y-4">
+          <div class="flex items-center justify-between border-b border-[var(--line)] pb-3">
+            <h3 class="font-display text-2xl font-bold text-[var(--ink)]">${isEdit ? 'Edit Plan' : 'Create Plan'}</h3>
+            <button type="button" onclick="closeModal()" class="text-2xl text-[var(--muted)]">&times;</button>
+          </div>
+
+          <div>
+            <label class="field-label">Plan Name *</label>
+            <input name="name" class="input" required value="${escapeHtml(p.name)}">
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="field-label">Type</label>
+              <select name="type" class="input">
+                <option value="Daily" ${p.type==='Daily'?'selected':''}>Daily</option>
+                <option value="Weekly" ${p.type==='Weekly'?'selected':''}>Weekly</option>
+                <option value="Monthly" ${p.type==='Monthly'?'selected':''}>Monthly</option>
+                <option value="Quarterly" ${p.type==='Quarterly'?'selected':''}>Quarterly</option>
+                <option value="Half-Year" ${p.type==='Half-Year'?'selected':''}>Half-Year</option>
+                <option value="Annual" ${p.type==='Annual'?'selected':''}>Annual</option>
+              </select>
+            </div>
+            <div>
+              <label class="field-label">Duration (Days) *</label>
+              <input type="number" name="durationDays" class="input" required min="1" value="${p.durationDays}">
+            </div>
+          </div>
+
+          <div>
+            <label class="field-label">Price (USD) *</label>
+            <input type="number" step="0.01" name="price" class="input" required min="0" value="${p.price}">
+          </div>
+
+          <div>
+            <label class="field-label">Description / Perks</label>
+            <textarea name="description" class="input" rows="3">${escapeHtml(p.description || '')}</textarea>
+          </div>
+
+          <div class="flex justify-end gap-2 pt-3 border-t border-[var(--line)]">
+            <button type="button" onclick="closeModal()" class="btn btn-outline">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Plan</button>
+          </div>
+        </form>
+      `;
+      openModal(html);
+
+      document.getElementById('form-plan').addEventListener('submit', function(e){
+        e.preventDefault();
+        const fd = new FormData(this);
+        const all = DB.get('plans', []);
+
+        if (isEdit){
+          const target = all.find(x => x.id === planId);
+          Object.assign(target, {
+            name: fd.get('name').trim(),
+            type: fd.get('type'),
+            durationDays: parseInt(fd.get('durationDays'), 10),
+            price: parseFloat(fd.get('price')),
+            description: fd.get('description').trim()
+          });
+          DB.set('plans', all);
+          toast('Plan updated', 'success');
+        } else {
+          all.push({
+            id: uid('P'),
+            name: fd.get('name').trim(),
+            type: fd.get('type'),
+            durationDays: parseInt(fd.get('durationDays'), 10),
+            price: parseFloat(fd.get('price')),
+            description: fd.get('description').trim()
+          });
+          DB.set('plans', all);
+          toast('Plan created', 'success');
+        }
+        closeModal();
+        renderPlans();
+      });
+    }
+
+    function editPlanModal(id){ showPlanModal(id); }
+
+    function deletePlan(id){
+      const p = planById(id);
+      if (!p) return;
+      if (!confirm(`Delete plan "${p.name}"?`)) return;
+      const all = DB.get('plans', []).filter(x => x.id !== id);
+      DB.set('plans', all);
+      toast('Plan removed', 'success');
+      renderPlans();
+    }
+
+    // Wiring
+    document.getElementById('btn-assign-plan').addEventListener('click', () => showAssignModal());
+    document.getElementById('btn-create-plan').addEventListener('click', () => showPlanModal());
+    document.getElementById('search-ms').addEventListener('input', renderAssignments);
+    document.getElementById('filter-ms-status').addEventListener('change', renderAssignments);
+
+    // Initial render
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('memberId')) showAssignModal(params.get('memberId'));
+    renderAssignments();
+  </script>
+</body>
+</html>

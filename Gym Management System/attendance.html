@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iron & Lime — Attendance</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app-shell"></div>
+
+  <template id="attendance-tpl">
+    <div class="space-y-6">
+      <!-- Quick Check-in Box -->
+      <div class="card p-6 bg-gradient-to-r from-[#0E2B27] to-[#12403B] text-white">
+        <div class="max-w-2xl">
+          <div class="flex items-center gap-2 text-xs font-semibold text-[var(--lime)] uppercase tracking-wider mb-2">
+            Front Desk Scanner &amp; Quick Check-in
+          </div>
+          <h2 class="font-display text-3xl font-bold">Fast Member Check-in</h2>
+          <p class="text-xs text-white/70 mt-1 mb-4">Type member code (e.g. MEM-1001) or scan barcode/QR code</p>
+
+          <form id="form-quick-checkin" class="flex flex-col sm:flex-row gap-2">
+            <input id="quick-input" class="input flex-1 text-base text-[var(--ink)] font-mono" placeholder="Enter Member Code or Phone..." required autofocus>
+            <button type="submit" class="btn btn-accent px-6 whitespace-nowrap">✓ Check In Now</button>
+          </form>
+          <div id="checkin-feedback" class="mt-3 text-xs hidden"></div>
+        </div>
+      </div>
+
+      <!-- Filters & Today's Stats -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="stat-card">
+          <span class="text-xs text-[var(--muted)]">Selected Date</span>
+          <div class="stat-number text-xl mt-1" id="lbl-cur-date">Today</div>
+          <p class="text-[11px] text-[var(--muted)] mt-1">Daily Log</p>
+        </div>
+        <div class="stat-card">
+          <span class="text-xs text-[var(--muted)]">Total Visits</span>
+          <div class="stat-number mt-1" id="stat-att-count">0</div>
+          <p class="text-[11px] text-[var(--muted)] mt-1">For selected date</p>
+        </div>
+        <div class="stat-card">
+          <span class="text-xs text-[var(--muted)]">Currently In Gym</span>
+          <div class="stat-number mt-1" id="stat-att-active">0</div>
+          <p class="text-[11px] text-green-600 font-semibold mt-1">• Still on floor</p>
+        </div>
+        <div class="stat-card">
+          <span class="text-xs text-[var(--muted)]">Peak Hour</span>
+          <div class="stat-number text-xl mt-1" id="stat-peak">07:00 - 09:00</div>
+          <p class="text-[11px] text-[var(--muted)] mt-1">Morning shift</p>
+        </div>
+      </div>
+
+      <!-- Table of Check-ins -->
+      <div class="card p-4 space-y-3">
+        <div class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+          <div class="flex items-center gap-2">
+            <label class="text-xs font-semibold text-[var(--muted)]">Filter Date:</label>
+            <input type="date" id="filter-att-date" class="input !w-44">
+            <button id="btn-today" class="btn btn-outline btn-sm">Today</button>
+          </div>
+          <button id="btn-manual-att" class="btn btn-primary btn-sm">+ Manual Attendance Entry</button>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Member</th>
+                <th>Plan Status</th>
+                <th>Check-in Time</th>
+                <th>Check-out Time</th>
+                <th>Method</th>
+                <th class="text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody id="tbl-attendance"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <script src="js/common.js"></script>
+  <script>
+    const outlet = renderChrome('attendance', 'Gym Attendance');
+    outlet.innerHTML = document.getElementById('attendance-tpl').innerHTML;
+
+    let selectedDate = todayISO();
+    document.getElementById('filter-att-date').value = selectedDate;
+
+    function renderAttendance(){
+      refreshMembershipStatuses();
+      const allAtt = DB.get('attendance', []);
+      const members = DB.get('members', []);
+
+      const dayAtt = allAtt.filter(a => a.date === selectedDate);
+      document.getElementById('lbl-cur-date').textContent = selectedDate === todayISO() ? 'Today' : fmtDate(selectedDate);
+      document.getElementById('stat-att-count').textContent = dayAtt.length;
+      document.getElementById('stat-att-active').textContent = dayAtt.filter(a => !a.checkOut).length;
+
+      const tbody = document.getElementById('tbl-attendance');
+      if (!dayAtt.length){
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-xs text-[var(--muted)]">No attendance records for this date.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = dayAtt.map(a => {
+        const m = memberById(a.memberId);
+        const ms = activeMembershipFor(a.memberId);
+
+        let planStatus = '<span class="badge badge-muted text-[10px]">No Plan</span>';
+        if (ms && ms.status === 'Active')  planStatus = '<span class="badge badge-success text-[10px]">Active</span>';
+        if (ms && ms.status === 'Expired') planStatus = '<span class="badge badge-danger text-[10px]">Expired</span>';
+
+        return `<tr>
+          <td>
+            <div class="font-semibold text-[var(--ink)]">${escapeHtml(m ? m.fullName : 'Unknown')}</div>
+            <div class="text-[11px] text-[var(--muted)]">${m ? m.memberCode : ''}</div>
+          </td>
+          <td>${planStatus}</td>
+          <td class="font-mono text-xs font-semibold text-[var(--teal-900)]">${a.checkIn}</td>
+          <td class="font-mono text-xs">${a.checkOut || '<span class="badge badge-success text-[10px]">• On Floor</span>'}</td>
+          <td><span class="badge ${a.method==='QR Code'?'badge-info':'badge-muted'} text-[10px]">${a.method}</span></td>
+          <td class="text-right">
+            ${!a.checkOut ? `<button onclick="checkOutMember('${a.id}')" class="btn btn-outline btn-sm text-xs">Check Out</button>` : ''}
+            <button onclick="deleteAtt('${a.id}')" class="btn btn-danger btn-sm text-xs">Del</button>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    function checkOutMember(attId){
+      const all = DB.get('attendance', []);
+      const item = all.find(x => x.id === attId);
+      if (!item) return;
+      const now = new Date();
+      item.checkOut = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+      DB.set('attendance', all);
+      toast('Member checked out', 'info');
+      renderAttendance();
+    }
+
+    function deleteAtt(id){
+      const all = DB.get('attendance', []).filter(x => x.id !== id);
+      DB.set('attendance', all);
+      renderAttendance();
+    }
+
+    // Quick check-in form
+    document.getElementById('form-quick-checkin').addEventListener('submit', function(e){
+      e.preventDefault();
+      const val = document.getElementById('quick-input').value.trim().toLowerCase();
+      const fb = document.getElementById('checkin-feedback');
+      fb.classList.remove('hidden');
+
+      const members = DB.get('members', []);
+      const m = members.find(x => x.memberCode.toLowerCase() === val || x.phone.toLowerCase() === val || x.fullName.toLowerCase().includes(val));
+
+      if (!m){
+        fb.className = 'mt-3 p-3 rounded bg-red-900/40 text-red-200 text-xs border border-red-500/40';
+        fb.textContent = '❌ Member not found with query: ' + val;
+        return;
+      }
+
+      const ms = activeMembershipFor(m.id);
+      if (!ms || ms.status !== 'Active'){
+        fb.className = 'mt-3 p-3 rounded bg-amber-900/40 text-amber-200 text-xs border border-amber-500/40';
+        fb.innerHTML = `⚠️ <strong>${escapeHtml(m.fullName)}</strong> (${m.memberCode}) has no active membership! <a href="memberships.html?memberId=${m.id}" class="underline ml-2">Assign Plan</a>`;
+      } else {
+        fb.className = 'mt-3 p-3 rounded bg-emerald-900/40 text-emerald-200 text-xs border border-emerald-500/40';
+        fb.innerHTML = `✓ Checked in: <strong>${escapeHtml(m.fullName)}</strong> (${m.memberCode}) — Valid until ${fmtDate(ms.endDate)}`;
+      }
+
+      // Record check-in
+      const all = DB.get('attendance', []);
+      const now = new Date();
+      const timeStr = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+      all.unshift({
+        id: uid('AT'),
+        memberId: m.id,
+        date: todayISO(),
+        checkIn: timeStr,
+        checkOut: '',
+        method: 'QR Code'
+      });
+      DB.set('attendance', all);
+
+      document.getElementById('quick-input').value = '';
+      selectedDate = todayISO();
+      document.getElementById('filter-att-date').value = selectedDate;
+      renderAttendance();
+    });
+
+    // Manual Entry Modal
+    document.getElementById('btn-manual-att').addEventListener('click', () => {
+      const members = DB.get('members', []);
+      const now = new Date();
+      const curTime = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+
+      const html = `
+        <form id="form-manual-att" class="p-6 space-y-4">
+          <div class="flex items-center justify-between border-b border-[var(--line)] pb-3">
+            <h3 class="font-display text-2xl font-bold text-[var(--ink)]">Manual Attendance Log</h3>
+            <button type="button" onclick="closeModal()" class="text-2xl text-[var(--muted)]">&times;</button>
+          </div>
+
+          <div>
+            <label class="field-label">Member *</label>
+            <select name="memberId" class="input" required>
+              <option value="">-- Choose Member --</option>
+              ${members.map(m => `<option value="${m.id}">${escapeHtml(m.fullName)} (${m.memberCode})</option>`).join('')}
+            </select>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="field-label">Date</label>
+              <input type="date" name="date" class="input" required value="${selectedDate}">
+            </div>
+            <div>
+              <label class="field-label">Check-in Time</label>
+              <input type="time" name="checkIn" class="input" required value="${curTime}">
+            </div>
+          </div>
+
+          <div class="flex justify-end gap-2 pt-3 border-t border-[var(--line)]">
+            <button type="button" onclick="closeModal()" class="btn btn-outline">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Entry</button>
+          </div>
+        </form>
+      `;
+      openModal(html);
+
+      document.getElementById('form-manual-att').addEventListener('submit', function(e){
+        e.preventDefault();
+        const fd = new FormData(this);
+        const all = DB.get('attendance', []);
+        all.unshift({
+          id: uid('AT'),
+          memberId: fd.get('memberId'),
+          date: fd.get('date'),
+          checkIn: fd.get('checkIn'),
+          checkOut: '',
+          method: 'Manual'
+        });
+        DB.set('attendance', all);
+        toast('Attendance logged', 'success');
+        closeModal();
+        renderAttendance();
+      });
+    });
+
+    document.getElementById('filter-att-date').addEventListener('change', e => {
+      selectedDate = e.target.value;
+      renderAttendance();
+    });
+
+    document.getElementById('btn-today').addEventListener('click', () => {
+      selectedDate = todayISO();
+      document.getElementById('filter-att-date').value = selectedDate;
+      renderAttendance();
+    });
+
+    renderAttendance();
+  </script>
+</body>
+</html>

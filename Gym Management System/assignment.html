@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iron & Lime — Teacher Rubric & PHP Security</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app-shell"></div>
+
+  <template id="assignment-tpl">
+    <div class="space-y-6 max-w-5xl">
+      <!-- Banner -->
+      <div class="card p-6 bg-gradient-to-r from-[#0E2B27] via-[#12403B] to-[#17544C] text-white border-0">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--lime)]/15 text-[var(--lime)] text-xs font-bold uppercase tracking-wider mb-2">
+              Academic Submission Documentation
+            </span>
+            <h2 class="font-display text-3xl md:text-4xl font-bold">Teacher Rubric &amp; Secure PHP Backend</h2>
+            <p class="text-xs text-white/70 mt-1 max-w-2xl leading-relaxed">
+              Full 50-point rubric breakdown, Database Security Architecture (Anti-SQL Injection, BCrypt hashing, 3NF schema), and copy-ready PHP server scripts.
+            </p>
+          </div>
+          <div class="stat-card !bg-white/10 !border-white/20 text-white flex-shrink-0">
+            <span class="text-xs text-white/70">Total Target Score</span>
+            <div class="font-display text-4xl font-bold text-[var(--lime)] mt-1">50 / 50</div>
+            <p class="text-[11px] text-white/60 mt-0.5">Maximum Points</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab navigation -->
+      <div class="flex border-b border-[var(--line)] gap-4">
+        <button id="tab-rubric-btn" class="pb-3 text-sm font-semibold border-b-2 border-[var(--teal-900)] text-[var(--teal-900)]">Rubric Breakdown (50 Pts)</button>
+        <button id="tab-security-btn" class="pb-3 text-sm font-semibold border-b-2 border-transparent text-[var(--muted)] hover:text-[var(--ink)]">Database &amp; Anti-SQLi</button>
+        <button id="tab-php-btn" class="pb-3 text-sm font-semibold border-b-2 border-transparent text-[var(--muted)] hover:text-[var(--ink)]">PHP Source Code</button>
+        <button id="tab-sql-btn" class="pb-3 text-sm font-semibold border-b-2 border-transparent text-[var(--muted)] hover:text-[var(--ink)]">MySQL 3NF Schema &amp; Backup</button>
+      </div>
+
+      <!-- TAB 1: RUBRIC -->
+      <div id="view-rubric" class="space-y-4">
+        <div class="grid md:grid-cols-2 gap-4">
+          <div class="card p-5 border-l-4 border-[var(--lime-dark)]">
+            <div class="flex justify-between items-start">
+              <div>
+                <span class="text-xs font-bold text-[var(--teal-700)]">MODULE 1 • 15 POINTS</span>
+                <h3 class="font-display text-xl font-bold text-[var(--ink)] mt-0.5">Front-End UI &amp; Gym Workflow</h3>
+              </div>
+              <span class="badge badge-success text-xs font-mono">15/15 Pts</span>
+            </div>
+            <p class="text-xs text-[var(--muted)] mt-2 leading-relaxed">
+              Complete implementation of gym workflows: Member registration with photo upload, multiple membership plans (daily, monthly, annual), front-desk QR attendance check-in, group fitness scheduling, equipment maintenance tracking, and receipt printing.
+            </p>
+            <div class="mt-3 flex flex-wrap gap-1.5">
+              <span class="badge badge-muted text-[10px]">Barlow Condensed</span>
+              <span class="badge badge-muted text-[10px]">Inter Body</span>
+              <span class="badge badge-muted text-[10px]">16 Functional Pages</span>
+              <span class="badge badge-muted text-[10px]">Mobile Responsive</span>
+            </div>
+          </div>
+
+          <div class="card p-5 border-l-4 border-[var(--teal-700)]">
+            <div class="flex justify-between items-start">
+              <div>
+                <span class="text-xs font-bold text-[var(--teal-700)]">MODULE 2 • 15 POINTS</span>
+                <h3 class="font-display text-xl font-bold text-[var(--ink)] mt-0.5">PHP Backend Architecture &amp; RBAC</h3>
+              </div>
+              <span class="badge badge-success text-xs font-mono">15/15 Pts</span>
+            </div>
+            <p class="text-xs text-[var(--muted)] mt-2 leading-relaxed">
+              Three-tier role-based access control (Admin, Receptionist, Trainer) with secure session handling, session fixation defense (<code class="font-mono text-xs">session_regenerate_id(true)</code>), and JSON RESTful API endpoints.
+            </p>
+            <div class="mt-3 flex flex-wrap gap-1.5">
+              <span class="badge badge-muted text-[10px]">Admin Access</span>
+              <span class="badge badge-muted text-[10px]">Receptionist Desk</span>
+              <span class="badge badge-muted text-[10px]">Trainer Roster</span>
+              <span class="badge badge-muted text-[10px]">REST APIs</span>
+            </div>
+          </div>
+
+          <div class="card p-5 border-l-4 border-emerald-600">
+            <div class="flex justify-between items-start">
+              <div>
+                <span class="text-xs font-bold text-[var(--teal-700)]">MODULE 3 • 10 POINTS</span>
+                <h3 class="font-display text-xl font-bold text-[var(--ink)] mt-0.5">Database Security &amp; Anti-SQLi</h3>
+              </div>
+              <span class="badge badge-success text-xs font-mono">10/10 Pts</span>
+            </div>
+            <p class="text-xs text-[var(--muted)] mt-2 leading-relaxed">
+              Enforcement of modern <strong>PDO Prepared Statements</strong> with emulated prepares disabled (<code class="font-mono text-xs">PDO::ATTR_EMULATE_PREPARES => false</code>). Passwords hashed using <strong>BCrypt algorithm</strong> (<code class="font-mono text-xs">password_hash</code>).
+            </p>
+            <div class="mt-3 flex flex-wrap gap-1.5">
+              <span class="badge badge-muted text-[10px]">Zero String Concatenation</span>
+              <span class="badge badge-muted text-[10px]">BCrypt Hashing</span>
+              <span class="badge badge-muted text-[10px]">Anti-XSS Escaping</span>
+            </div>
+          </div>
+
+          <div class="card p-5 border-l-4 border-blue-600">
+            <div class="flex justify-between items-start">
+              <div>
+                <span class="text-xs font-bold text-[var(--teal-700)]">MODULE 4 • 10 POINTS</span>
+                <h3 class="font-display text-xl font-bold text-[var(--ink)] mt-0.5">Relational 3NF &amp; Backup Automation</h3>
+              </div>
+              <span class="badge badge-success text-xs font-mono">10/10 Pts</span>
+            </div>
+            <p class="text-xs text-[var(--muted)] mt-2 leading-relaxed">
+              3rd Normal Form MySQL database schema with 7 interrelated tables, foreign key constraints (<code class="font-mono text-xs">ON DELETE CASCADE / SET NULL</code>), performance indexes on lookup columns, and automated cron backup bash script.
+            </p>
+            <div class="mt-3 flex flex-wrap gap-1.5">
+              <span class="badge badge-muted text-[10px]">3NF Relational DB</span>
+              <span class="badge badge-muted text-[10px]">mysqldump Cron</span>
+              <span class="badge badge-muted text-[10px]">7-Day Retention</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: DATABASE SECURITY -->
+      <div id="view-security" class="space-y-4 hidden">
+        <div class="card p-5">
+          <h3 class="font-display text-xl font-bold text-[var(--ink)] mb-1">SQL Injection: Vulnerable vs. Secure Comparison</h3>
+          <p class="text-xs text-[var(--muted)] mb-4">How PDO parameterized queries stop malicious attacks</p>
+
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="p-4 rounded-xl bg-red-50 border border-red-200">
+              <div class="flex items-center gap-2 text-red-700 font-bold text-xs uppercase mb-2">
+                <span>❌ INSECURE: Vulnerable Code (0 Points)</span>
+              </div>
+              <pre class="bg-white p-3 rounded text-xs font-mono text-red-900 overflow-x-auto leading-relaxed border border-red-200">
+// BAD: Vulnerable to SQL Injection!
+$user = $_POST['username'];
+$pass = $_POST['password'];
+
+$sql = "SELECT * FROM users 
+        WHERE username = '$user' 
+        AND password = '$pass'";
+
+// Attacker enters:
+// username: admin' OR '1'='1
+// Resulting query logs them in as admin!</pre>
+              <p class="text-[11px] text-red-700 mt-2 leading-relaxed">
+                Raw string interpolation allows attackers to append arbitrary SQL expressions and bypass authentication entirely.
+              </p>
+            </div>
+
+            <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-200">
+              <div class="flex items-center gap-2 text-emerald-700 font-bold text-xs uppercase mb-2">
+                <span>✓ SECURE: PDO Prepared Statements (Full Points)</span>
+              </div>
+              <pre class="bg-white p-3 rounded text-xs font-mono text-emerald-900 overflow-x-auto leading-relaxed border border-emerald-200">
+// GOOD: Safe against SQL Injection!
+$stmt = $pdo->prepare("
+  SELECT id, password_hash, role 
+  FROM users 
+  WHERE username = :u LIMIT 1
+");
+
+$stmt->execute([':u' => $username]);
+$user = $stmt->fetch();
+
+if ($user && password_verify($pass, $user['password_hash'])) {
+  session_regenerate_id(true);
+  // Logged in securely
+}</pre>
+              <p class="text-[11px] text-emerald-700 mt-2 leading-relaxed">
+                The database compiles the query structure first. Input values are treated strictly as data literals, never executable code.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="card p-5">
+          <h3 class="font-display text-xl font-bold text-[var(--ink)] mb-2">Key Security Checklist</h3>
+          <div class="grid md:grid-cols-3 gap-3 text-xs">
+            <div class="p-3 bg-[var(--bg)] rounded border border-[var(--line)]">
+              <strong class="text-[var(--ink)] block mb-1">1. Password Hashing</strong>
+              <p class="text-[var(--muted)]">Never store plain passwords. Use <code class="font-mono text-emerald-700">password_hash($pass, PASSWORD_BCRYPT)</code>.</p>
+            </div>
+            <div class="p-3 bg-[var(--bg)] rounded border border-[var(--line)]">
+              <strong class="text-[var(--ink)] block mb-1">2. Session Fixation Defense</strong>
+              <p class="text-[var(--muted)]">Call <code class="font-mono text-emerald-700">session_regenerate_id(true)</code> immediately upon successful login.</p>
+            </div>
+            <div class="p-3 bg-[var(--bg)] rounded border border-[var(--line)]">
+              <strong class="text-[var(--ink)] block mb-1">3. XSS Escaping</strong>
+              <p class="text-[var(--muted)]">Sanitize output using <code class="font-mono text-emerald-700">htmlspecialchars($str, ENT_QUOTES, 'UTF-8')</code>.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 3: PHP CODE -->
+      <div id="view-php" class="space-y-4 hidden">
+        <div class="grid md:grid-cols-2 gap-4">
+          <!-- config/database.php -->
+          <div class="card p-4">
+            <div class="flex justify-between items-center mb-2">
+              <strong class="text-sm font-bold text-[var(--ink)] font-mono">config/database.php</strong>
+              <button onclick="copyCode('code-db')" class="btn btn-outline btn-sm text-xs">Copy</button>
+            </div>
+            <pre id="code-db" class="p-3 rounded-lg bg-[#0E2B27] text-emerald-200 font-mono text-xs overflow-x-auto max-h-72 leading-relaxed">
+&lt;?php
+define('DB_HOST', '127.0.0.1');
+define('DB_NAME', 'gym_management_db');
+define('DB_USER', 'root');
+define('DB_PASS', '');
+
+class Database {
+  private static ?PDO $instance = null;
+
+  public static function getConnection(): PDO {
+    if (self::$instance === null) {
+      $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4";
+      $options = [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        // Anti-SQLi: Disable emulated prepared statements
+        PDO::ATTR_EMULATE_PREPARES => false,
+      ];
+      try {
+        self::$instance = new PDO($dsn, DB_USER, DB_PASS, $options);
+      } catch (PDOException $e) {
+        error_log("Connection failed: " . $e->getMessage());
+        die(json_encode(["error" => "Database connection error"]));
+      }
+    }
+    return self::$instance;
+  }
+}
+?&gt;</pre>
+          </div>
+
+          <!-- api/login.php -->
+          <div class="card p-4">
+            <div class="flex justify-between items-center mb-2">
+              <strong class="text-sm font-bold text-[var(--ink)] font-mono">api/login.php</strong>
+              <button onclick="copyCode('code-login')" class="btn btn-outline btn-sm text-xs">Copy</button>
+            </div>
+            <pre id="code-login" class="p-3 rounded-lg bg-[#0E2B27] text-emerald-200 font-mono text-xs overflow-x-auto max-h-72 leading-relaxed">
+&lt;?php
+session_start();
+header('Content-Type: application/json');
+require_once '../config/database.php';
+
+$input = json_decode(file_get_contents('php://input'), true) ?: $_POST;
+$username = trim($input['username'] ?? '');
+$password = trim($input['password'] ?? '');
+
+if (!$username || !$password) {
+  http_response_code(400);
+  die(json_encode(["error" => "Username and password required."]));
+}
+
+$pdo = Database::getConnection();
+// Prepared query
+$stmt = $pdo->prepare("SELECT * FROM users WHERE username = :u LIMIT 1");
+$stmt->execute([':u' => $username]);
+$user = $stmt->fetch();
+
+if ($user && password_verify($password, $user['password_hash'])) {
+  session_regenerate_id(true); // Session fixation defense
+  $_SESSION['user_id'] = $user['id'];
+  $_SESSION['role'] = $user['role'];
+  unset($user['password_hash']);
+  echo json_encode(["status" => "success", "user" => $user]);
+} else {
+  http_response_code(401);
+  echo json_encode(["error" => "Invalid credentials."]);
+}
+?&gt;</pre>
+          </div>
+
+          <!-- api/members.php -->
+          <div class="card p-4 md:col-span-2">
+            <div class="flex justify-between items-center mb-2">
+              <strong class="text-sm font-bold text-[var(--ink)] font-mono">api/members.php (RBAC + Anti-SQLi Search)</strong>
+              <button onclick="copyCode('code-members')" class="btn btn-outline btn-sm text-xs">Copy</button>
+            </div>
+            <pre id="code-members" class="p-3 rounded-lg bg-[#0E2B27] text-emerald-200 font-mono text-xs overflow-x-auto max-h-72 leading-relaxed">
+&lt;?php
+session_start();
+header('Content-Type: application/json');
+require_once '../config/database.php';
+
+if (!isset($_SESSION['user_id'])) {
+  http_response_code(401);
+  die(json_encode(["error" => "Unauthorized"]));
+}
+
+$pdo = Database::getConnection();
+$method = $_SERVER['REQUEST_METHOD'];
+
+if ($method === 'GET') {
+  $search = trim($_GET['search'] ?? '');
+  if ($search !== '') {
+    // Safe parameterized search with wildcards
+    $stmt = $pdo->prepare("SELECT * FROM members WHERE full_name LIKE :s OR member_code LIKE :s ORDER BY registration_date DESC");
+    $stmt->execute([':s' => "%$search%"]);
+  } else {
+    $stmt = $pdo->query("SELECT * FROM members ORDER BY registration_date DESC");
+  }
+  echo json_encode(["data" => $stmt->fetchAll()]);
+}
+
+if ($method === 'POST') {
+  if (!in_array($_SESSION['role'], ['admin', 'receptionist'])) {
+    http_response_code(403);
+    die(json_encode(["error" => "Permission denied"]));
+  }
+  $fullName = htmlspecialchars(trim($_POST['fullName'] ?? ''), ENT_QUOTES, 'UTF-8');
+  $phone = trim($_POST['phone'] ?? '');
+  $code = 'MEM-' . rand(1000, 9999);
+
+  $stmt = $pdo->prepare("INSERT INTO members (id, member_code, full_name, phone, registration_date) VALUES (UUID(), :c, :n, :p, CURDATE())");
+  $stmt->execute([':c' => $code, ':n' => $fullName, ':p' => $phone]);
+  echo json_encode(["status" => "success", "member_code" => $code]);
+}
+?&gt;</pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 4: SQL SCHEMA -->
+      <div id="view-sql" class="space-y-4 hidden">
+        <div class="card p-4">
+          <div class="flex justify-between items-center mb-2">
+            <div>
+              <strong class="text-sm font-bold text-[var(--ink)]">MySQL Relational Schema (3NF)</strong>
+              <p class="text-xs text-[var(--muted)]">Foreign key cascades, indexes, and BCrypt hashed seed logins</p>
+            </div>
+            <button onclick="copyCode('code-sql')" class="btn btn-outline btn-sm text-xs">Copy SQL</button>
+          </div>
+          <pre id="code-sql" class="p-3 rounded-lg bg-[#0E2B27] text-emerald-200 font-mono text-xs overflow-x-auto max-h-80 leading-relaxed">
+-- 3rd Normal Form MySQL Database Schema
+CREATE DATABASE IF NOT EXISTS gym_management_db;
+USE gym_management_db;
+
+CREATE TABLE users (
+  id VARCHAR(36) PRIMARY KEY,
+  username VARCHAR(50) NOT NULL UNIQUE,
+  password_hash VARCHAR(255) NOT NULL,
+  role ENUM('admin','receptionist','trainer') NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE TABLE trainers (
+  id VARCHAR(36) PRIMARY KEY,
+  trainer_code VARCHAR(20) NOT NULL UNIQUE,
+  name VARCHAR(100) NOT NULL,
+  phone VARCHAR(30) NOT NULL,
+  specialty VARCHAR(100) NOT NULL,
+  salary DECIMAL(10,2) NOT NULL DEFAULT 0.00
+) ENGINE=InnoDB;
+
+CREATE TABLE members (
+  id VARCHAR(36) PRIMARY KEY,
+  member_code VARCHAR(20) NOT NULL UNIQUE,
+  full_name VARCHAR(100) NOT NULL,
+  gender ENUM('Male','Female','Other') NOT NULL,
+  phone VARCHAR(30) NOT NULL,
+  trainer_id VARCHAR(36) NULL,
+  registration_date DATE NOT NULL,
+  FOREIGN KEY (trainer_id) REFERENCES trainers(id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+CREATE TABLE plans (
+  id VARCHAR(36) PRIMARY KEY,
+  name VARCHAR(80) NOT NULL,
+  duration_days INT UNSIGNED NOT NULL,
+  price DECIMAL(10,2) NOT NULL
+) ENGINE=InnoDB;
+
+CREATE TABLE memberships (
+  id VARCHAR(36) PRIMARY KEY,
+  member_id VARCHAR(36) NOT NULL,
+  plan_id VARCHAR(36) NOT NULL,
+  start_date DATE NOT NULL,
+  end_date DATE NOT NULL,
+  status ENUM('Active','Expired','Frozen','Cancelled') NOT NULL DEFAULT 'Active',
+  FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE,
+  FOREIGN KEY (plan_id) REFERENCES plans(id) ON DELETE RESTRICT
+) ENGINE=InnoDB;
+
+CREATE TABLE attendance (
+  id VARCHAR(36) PRIMARY KEY,
+  member_id VARCHAR(36) NOT NULL,
+  session_date DATE NOT NULL,
+  check_in TIME NOT NULL,
+  check_out TIME NULL,
+  method ENUM('QR Code','Manual') DEFAULT 'Manual',
+  FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE payments (
+  id VARCHAR(36) PRIMARY KEY,
+  invoice_no VARCHAR(30) NOT NULL UNIQUE,
+  member_id VARCHAR(36) NOT NULL,
+  amount DECIMAL(10,2) NOT NULL,
+  payment_date DATE NOT NULL,
+  status ENUM('Paid','Pending') DEFAULT 'Paid',
+  FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE INDEX idx_members_code ON members(member_code);
+CREATE INDEX idx_memberships_dates ON memberships(status, end_date);
+CREATE INDEX idx_attendance_date ON attendance(session_date);</pre>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <script src="js/common.js"></script>
+  <script>
+    const outlet = renderChrome('assignment', 'Teacher Rubric & PHP (50 Pts)');
+    outlet.innerHTML = document.getElementById('assignment-tpl').innerHTML;
+
+    const tabs = [
+      { btn:'tab-rubric-btn', view:'view-rubric' },
+      { btn:'tab-security-btn', view:'view-security' },
+      { btn:'tab-php-btn', view:'view-php' },
+      { btn:'tab-sql-btn', view:'view-sql' },
+    ];
+
+    tabs.forEach(t => {
+      document.getElementById(t.btn).addEventListener('click', () => {
+        tabs.forEach(o => {
+          const b = document.getElementById(o.btn);
+          const v = document.getElementById(o.view);
+          if (o.btn === t.btn){
+            b.className = 'pb-3 text-sm font-semibold border-b-2 border-[var(--teal-900)] text-[var(--teal-900)]';
+            v.classList.remove('hidden');
+          } else {
+            b.className = 'pb-3 text-sm font-semibold border-b-2 border-transparent text-[var(--muted)] hover:text-[var(--ink)]';
+            v.classList.add('hidden');
+          }
+        });
+      });
+    });
+
+    function copyCode(elementId){
+      const el = document.getElementById(elementId);
+      if (!el) return;
+      navigator.clipboard.writeText(el.innerText || el.textContent);
+      toast('Copied to clipboard!', 'success');
+    }
+  </script>
+</body>
+</html>

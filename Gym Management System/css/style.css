@@ -1,0 +1,256 @@
+/* ============================================================
+   Iron & Lime — Gym Management System
+   Shared styles layered on top of Tailwind (CDN, utility-first).
+   ============================================================ */
+
+:root{
+  --ink:        #122420;
+  --ink-soft:   #3F534E;
+  --muted:      #6B7C77;
+  --line:       #DCE3DF;
+  --bg:         #F5F7F5;
+  --panel:      #FFFFFF;
+  --teal-950:   #0B211D;
+  --teal-900:   #0E2B27;
+  --teal-800:   #12403B;
+  --teal-700:   #17544C;
+  --lime:       #CFFF3D;
+  --lime-dark:  #A8D91F;
+  --success:    #2F9E5B;
+  --warning:    #C9891A;
+  --danger:     #D8483A;
+  --info:       #2E7DB8;
+}
+
+html{ scroll-behavior:smooth; }
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:'Inter', ui-sans-serif, system-ui, sans-serif;
+}
+.font-display{ font-family:'Barlow Condensed','Inter',sans-serif; }
+
+/* Thin, quiet scrollbar */
+::-webkit-scrollbar{ width:8px; height:8px; }
+::-webkit-scrollbar-track{ background:transparent; }
+::-webkit-scrollbar-thumb{ background:#C6D0CB; border-radius:8px; }
+::-webkit-scrollbar-thumb:hover{ background:#AEB9B3; }
+
+/* Sidebar nav item */
+.nav-link{
+  display:flex; align-items:center; gap:.65rem;
+  padding:.6rem .85rem; border-radius:.5rem;
+  color:#C9D6D1; font-size:.875rem; font-weight:500;
+  border-left:2px solid transparent;
+  transition:background .15s ease, color .15s ease;
+}
+.nav-link:hover{ background:rgba(255,255,255,.06); color:#fff; }
+.nav-link.active{
+  background:rgba(207,255,61,.12);
+  color:var(--lime);
+  border-left:2px solid var(--lime);
+}
+.nav-link svg{ width:18px; height:18px; flex-shrink:0; }
+.nav-group-label{
+  font-size:.7rem; letter-spacing:.02em; color:#6F847E;
+  padding:1rem .85rem .35rem;
+}
+
+/* Cards */
+.card{
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:.85rem;
+}
+.stat-card{
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:.85rem;
+  padding:1.1rem 1.25rem;
+}
+.stat-number{
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:700; font-size:2.1rem; line-height:1;
+  color:var(--ink);
+}
+
+/* Buttons */
+.btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:.4rem;
+  padding:.55rem 1rem; border-radius:.5rem; font-size:.875rem; font-weight:600;
+  transition:filter .15s ease, background .15s ease; cursor:pointer; border:1px solid transparent;
+}
+.btn-primary{ background:var(--teal-900); color:#fff; }
+.btn-primary:hover{ background:var(--teal-800); }
+.btn-accent{ background:var(--lime); color:var(--teal-950); }
+.btn-accent:hover{ background:var(--lime-dark); }
+.btn-outline{ background:transparent; border-color:var(--line); color:var(--ink-soft); }
+.btn-outline:hover{ background:#EEF2EF; }
+.btn-danger{ background:#FBE7E4; color:var(--danger); }
+.btn-danger:hover{ background:#F6D2CC; }
+.btn-sm{ padding:.35rem .65rem; font-size:.78rem; border-radius:.4rem; }
+
+/* Inputs */
+.field-label{ font-size:.78rem; font-weight:600; color:var(--ink-soft); margin-bottom:.3rem; display:block; }
+.input, select.input, textarea.input{
+  width:100%; padding:.55rem .75rem; border:1px solid var(--line); border-radius:.5rem;
+  font-size:.875rem; background:#fff; color:var(--ink);
+}
+.input:focus, select.input:focus, textarea.input:focus{
+  outline:none; border-color:var(--teal-700); box-shadow:0 0 0 3px rgba(23,84,76,.12);
+}
+
+/* Badges */
+.badge{ display:inline-flex; align-items:center; gap:.3rem; padding:.2rem .55rem; border-radius:999px; font-size:.72rem; font-weight:600; }
+.badge-success{ background:#E4F5EA; color:var(--success); }
+.badge-warning{ background:#FBF0DA; color:var(--warning); }
+.badge-danger{ background:#FBE7E4; color:var(--danger); }
+.badge-info{ background:#E3EFF7; color:var(--info); }
+.badge-muted{ background:#EDF1EF; color:var(--muted); }
+
+/* Table */
+table.data-table{ width:100%; border-collapse:collapse; font-size:.85rem; }
+table.data-table thead th{
+  text-align:left; font-size:.72rem; font-weight:600; color:var(--muted);
+  padding:.6rem .75rem; border-bottom:1px solid var(--line); white-space:nowrap;
+}
+table.data-table tbody td{ padding:.65rem .75rem; border-bottom:1px solid #EEF1EF; vertical-align:middle; }
+table.data-table tbody tr:hover{ background:#FAFBFA; }
+
+/* Modal */
+.modal-backdrop{ position:fixed; inset:0; background:rgba(11,33,29,.45); backdrop-filter:blur(1px); z-index:50; }
+.modal-panel{ background:#fff; border-radius:.9rem; box-shadow:0 24px 60px rgba(11,33,29,.25); }
+
+/* Avatar circle */
+.avatar{
+  width:2.25rem; height:2.25rem; border-radius:999px; display:flex; align-items:center; justify-content:center;
+  background:var(--teal-900); color:var(--lime); font-weight:700; font-size:.8rem; flex-shrink:0;
+}
+
+.toast{
+  background:var(--teal-950); color:#fff; padding:.65rem 1rem; border-radius:.55rem; font-size:.85rem;
+  box-shadow:0 10px 30px rgba(0,0,0,.25);
+}
+
+/* Mobile Bottom Navigation */
+.mobile-nav-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 56px;
+  min-height: 48px;
+  padding: 4px 6px;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 500;
+  border-radius: 0.5rem;
+  transition: color 0.15s ease, background 0.15s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.mobile-nav-btn svg {
+  width: 20px;
+  height: 20px;
+}
+.mobile-nav-btn.active {
+  color: var(--teal-900);
+  font-weight: 700;
+}
+.mobile-nav-btn.active svg {
+  stroke: var(--teal-900);
+  stroke-width: 2.2;
+}
+.safe-area-bottom {
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+}
+
+/* Responsive adjustments for mobile phones (< 768px) */
+@media (max-width: 767px){
+  #sidebar{
+    transform: translateX(-100%);
+    box-shadow: 0 0 35px rgba(0,0,0,0.45);
+    width: 280px;
+    z-index: 50;
+  }
+  #sidebar.open{
+    transform: translateX(0);
+  }
+
+  /* 44px Minimum Touch Targets for Phone Usability */
+  .btn, .input, select.input, textarea.input, .nav-link {
+    min-height: 44px;
+  }
+  .btn-sm {
+    min-height: 38px;
+    padding: 0.4rem 0.75rem;
+    font-size: 0.82rem;
+  }
+  #menu-toggle {
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.5rem;
+    background: #EEF3F0;
+  }
+
+  /* Prevent auto-zoom on iOS Safari focus */
+  .input, select.input, textarea.input {
+    font-size: 16px !important;
+  }
+
+  /* Ensure long titles don't overflow on small phone screens */
+  #header-title {
+    font-size: 1.15rem !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+  }
+
+  /* Toolbars and filters gracefully stack on phone */
+  .card .flex-1.flex-wrap,
+  .card .flex-1.flex,
+  .card .flex.items-center.gap-2.flex-1 {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    width: 100% !important;
+  }
+  .card .flex-1.flex-wrap > *,
+  .card .flex-1.flex > *,
+  .card .flex.items-center.gap-2.flex-1 > * {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Modals as bottom-sheets for natural thumb reach on phone */
+  .modal-backdrop {
+    padding: 0 !important;
+    align-items: flex-end !important;
+  }
+  .modal-panel {
+    border-radius: 1.25rem 1.25rem 0 0 !important;
+    max-height: 90vh !important;
+    width: 100% !important;
+  }
+
+  /* Action buttons inside table cells on mobile */
+  table.data-table tbody td .btn-sm {
+    min-height: 34px;
+    padding: 0.3rem 0.55rem;
+    font-size: 0.75rem;
+  }
+}
+
+/* Seamless view transition animation */
+.view-enter{
+  animation: viewFadeIn 0.16s ease-out;
+}
+@keyframes viewFadeIn{
+  from{ opacity:0.8; transform:translateY(3px); }
+  to{ opacity:1; transform:translateY(0); }
+}
+

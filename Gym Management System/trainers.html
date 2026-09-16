@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iron & Lime — Trainers</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app-shell"></div>
+
+  <template id="trainers-tpl">
+    <div class="space-y-4">
+      <div class="card p-4 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+        <div class="flex items-center gap-2 flex-1">
+          <input id="search-trainers" class="input !w-64" type="search" placeholder="Search by name, specialty...">
+          <select id="filter-trainer-status" class="input !w-36">
+            <option value="">All Statuses</option>
+            <option value="Active">Active</option>
+            <option value="On Leave">On Leave</option>
+            <option value="Inactive">Inactive</option>
+          </select>
+        </div>
+        <button id="btn-add-trainer" class="btn btn-primary flex-shrink-0">+ Add Trainer</button>
+      </div>
+
+      <div id="trainers-grid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+    </div>
+  </template>
+
+  <script src="js/common.js"></script>
+  <script>
+    const outlet = renderChrome('trainers', 'Personal Trainers');
+    outlet.innerHTML = document.getElementById('trainers-tpl').innerHTML;
+
+    function renderTrainers(){
+      const trainers = DB.get('trainers', []);
+      const members = DB.get('members', []);
+      const classes = DB.get('classes', []);
+      const search = (document.getElementById('search-trainers').value || '').toLowerCase();
+      const statusFilt = document.getElementById('filter-trainer-status').value;
+
+      const filtered = trainers.filter(t => {
+        const matchSearch = !search || t.name.toLowerCase().includes(search) || t.specialty.toLowerCase().includes(search);
+        const matchStatus = !statusFilt || t.status === statusFilt;
+        return matchSearch && matchStatus;
+      });
+
+      const grid = document.getElementById('trainers-grid');
+      if (!filtered.length){
+        grid.innerHTML = '<div class="col-span-full card p-8 text-center text-xs text-[var(--muted)]">No trainers found.</div>';
+        return;
+      }
+
+      grid.innerHTML = filtered.map(t => {
+        const assignedMembers = members.filter(m => m.trainerId === t.id);
+        const taughtClasses = classes.filter(c => c.trainerId === t.id);
+
+        let statusBadge = 'badge-success';
+        if (t.status === 'On Leave') statusBadge = 'badge-warning';
+        if (t.status === 'Inactive') statusBadge = 'badge-muted';
+
+        const photo = t.photo
+          ? `<img src="${t.photo}" class="w-14 h-14 rounded-full object-cover">`
+          : `<div class="avatar w-14 h-14 text-base">${initials(t.name)}</div>`;
+
+        return `
+          <div class="card p-5 flex flex-col justify-between">
+            <div>
+              <div class="flex items-start justify-between">
+                <div class="flex items-center gap-3">
+                  ${photo}
+                  <div>
+                    <h3 class="font-display text-xl font-bold text-[var(--ink)]">${escapeHtml(t.name)}</h3>
+                    <p class="text-xs text-[var(--teal-700)] font-semibold">${escapeHtml(t.specialty)}</p>
+                    <p class="text-[11px] text-[var(--muted)]">${t.trainerCode} • ${t.experienceYears}y exp</p>
+                  </div>
+                </div>
+                <span class="badge ${statusBadge} text-[10px]">${t.status}</span>
+              </div>
+
+              <div class="grid grid-cols-2 gap-2 mt-4 p-2.5 rounded bg-[var(--bg)] text-xs">
+                <div><span class="text-[var(--muted)] block">Assigned Clients:</span> <strong>${assignedMembers.length} members</strong></div>
+                <div><span class="text-[var(--muted)] block">Classes / Wk:</span> <strong>${taughtClasses.length} sessions</strong></div>
+                <div><span class="text-[var(--muted)] block">Phone:</span> ${t.phone}</div>
+                <div><span class="text-[var(--muted)] block">Salary:</span> ${fmtMoney(t.salary)}/mo</div>
+              </div>
+
+              <p class="text-[11px] text-[var(--muted)] mt-2">Cert: <strong class="text-[var(--ink)]">${escapeHtml(t.certification || 'N/A')}</strong> • Joined ${fmtDate(t.joinDate)}</p>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-3 mt-4 border-t border-[var(--line)]">
+              <button onclick="editTrainer('${t.id}')" class="btn btn-outline btn-sm text-xs">Edit</button>
+              <button onclick="deleteTrainer('${t.id}')" class="btn btn-danger btn-sm text-xs">Remove</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function showTrainerModal(trainerId){
+      const isEdit = Boolean(trainerId);
+      const t = isEdit ? trainerById(trainerId) : { name:'', phone:'', email:'', specialty:'', experienceYears:2, certification:'', salary:1000, status:'Active', joinDate:todayISO(), photo:'' };
+
+      const html = `
+        <form id="form-trainer" class="p-6 space-y-4">
+          <div class="flex items-center justify-between border-b border-[var(--line)] pb-3">
+            <h3 class="font-display text-2xl font-bold text-[var(--ink)]">${isEdit ? 'Edit Trainer' : 'Add New Trainer'}</h3>
+            <button type="button" onclick="closeModal()" class="text-2xl text-[var(--muted)]">&times;</button>
+          </div>
+
+          <div class="grid md:grid-cols-2 gap-3">
+            <div>
+              <label class="field-label">Full Name *</label>
+              <input name="name" class="input" required value="${escapeHtml(t.name)}">
+            </div>
+            <div>
+              <label class="field-label">Specialty *</label>
+              <input name="specialty" class="input" required placeholder="e.g. Strength & Conditioning" value="${escapeHtml(t.specialty)}">
+            </div>
+
+            <div>
+              <label class="field-label">Phone *</label>
+              <input name="phone" class="input" required value="${escapeHtml(t.phone)}">
+            </div>
+            <div>
+              <label class="field-label">Email *</label>
+              <input type="email" name="email" class="input" required value="${escapeHtml(t.email)}">
+            </div>
+
+            <div>
+              <label class="field-label">Experience (Years)</label>
+              <input type="number" name="experienceYears" class="input" min="0" value="${t.experienceYears}">
+            </div>
+            <div>
+              <label class="field-label">Certification</label>
+              <input name="certification" class="input" placeholder="e.g. NASM-CPT" value="${escapeHtml(t.certification || '')}">
+            </div>
+
+            <div>
+              <label class="field-label">Monthly Salary (USD)</label>
+              <input type="number" step="0.01" name="salary" class="input" value="${t.salary}">
+            </div>
+            <div>
+              <label class="field-label">Status</label>
+              <select name="status" class="input">
+                <option value="Active" ${t.status==='Active'?'selected':''}>Active</option>
+                <option value="On Leave" ${t.status==='On Leave'?'selected':''}>On Leave</option>
+                <option value="Inactive" ${t.status==='Inactive'?'selected':''}>Inactive</option>
+              </select>
+            </div>
+
+            <div class="md:col-span-2">
+              <label class="field-label">Join Date</label>
+              <input type="date" name="joinDate" class="input" value="${t.joinDate || todayISO()}">
+            </div>
+          </div>
+
+          <div class="flex justify-end gap-2 pt-3 border-t border-[var(--line)]">
+            <button type="button" onclick="closeModal()" class="btn btn-outline">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Trainer</button>
+          </div>
+        </form>
+      `;
+      openModal(html, { width:'max-w-xl' });
+
+      document.getElementById('form-trainer').addEventListener('submit', function(e){
+        e.preventDefault();
+        const fd = new FormData(this);
+        const all = DB.get('trainers', []);
+
+        if (isEdit){
+          const target = all.find(x => x.id === trainerId);
+          Object.assign(target, {
+            name: fd.get('name').trim(),
+            specialty: fd.get('specialty').trim(),
+            phone: fd.get('phone').trim(),
+            email: fd.get('email').trim(),
+            experienceYears: parseInt(fd.get('experienceYears'), 10),
+            certification: fd.get('certification').trim(),
+            salary: parseFloat(fd.get('salary')),
+            status: fd.get('status'),
+            joinDate: fd.get('joinDate')
+          });
+          DB.set('trainers', all);
+          toast('Trainer updated', 'success');
+        } else {
+          all.push({
+            id: uid('T'),
+            trainerCode: 'TR-' + String(1000 + all.length + 1),
+            name: fd.get('name').trim(),
+            specialty: fd.get('specialty').trim(),
+            phone: fd.get('phone').trim(),
+            email: fd.get('email').trim(),
+            experienceYears: parseInt(fd.get('experienceYears'), 10),
+            certification: fd.get('certification').trim(),
+            salary: parseFloat(fd.get('salary')),
+            status: fd.get('status'),
+            joinDate: fd.get('joinDate'),
+            photo: ''
+          });
+          DB.set('trainers', all);
+          toast('Trainer added', 'success');
+        }
+        closeModal();
+        renderTrainers();
+      });
+    }
+
+    function editTrainer(id){ showTrainerModal(id); }
+
+    function deleteTrainer(id){
+      const t = trainerById(id);
+      if (!t) return;
+      if (!confirm(`Remove trainer ${t.name}?`)) return;
+      const all = DB.get('trainers', []).filter(x => x.id !== id);
+      DB.set('trainers', all);
+      toast('Trainer removed', 'success');
+      renderTrainers();
+    }
+
+    document.getElementById('btn-add-trainer').addEventListener('click', () => showTrainerModal());
+    document.getElementById('search-trainers').addEventListener('input', renderTrainers);
+    document.getElementById('filter-trainer-status').addEventListener('change', renderTrainers);
+
+    renderTrainers();
+  </script>
+</body>
+</html>

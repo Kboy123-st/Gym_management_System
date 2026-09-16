@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iron & Lime — My Profile</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app-shell"></div>
+
+  <template id="profile-tpl">
+    <div class="space-y-6 max-w-2xl">
+      <!-- Profile Card -->
+      <div class="card p-6 flex items-center gap-4">
+        <div class="avatar w-16 h-16 text-xl" id="prof-avatar">AM</div>
+        <div>
+          <h2 class="font-display text-2xl font-bold text-[var(--ink)]" id="prof-name">Alex Morgan</h2>
+          <div class="flex items-center gap-2 mt-0.5">
+            <span class="badge badge-info uppercase text-[10px]" id="prof-role">ADMIN</span>
+            <span class="text-xs text-[var(--muted)]" id="prof-user">@admin</span>
+          </div>
+          <p class="text-xs text-[var(--muted)] mt-1" id="prof-email">admin@ironlime.gym</p>
+        </div>
+      </div>
+
+      <!-- Change password form -->
+      <form id="form-pwd" class="card p-6 space-y-4">
+        <div class="border-b border-[var(--line)] pb-3">
+          <h3 class="font-display text-lg font-bold text-[var(--ink)]">Change Password</h3>
+          <p class="text-xs text-[var(--muted)]">Update security credentials for this operator account</p>
+        </div>
+
+        <div>
+          <label class="field-label">Current Password</label>
+          <div class="relative">
+            <input type="password" id="cur-pass" class="input pr-10" required>
+            <button type="button" onclick="togglePassVisibility('cur-pass', this)" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--ink)] p-1 rounded transition focus:outline-none" aria-label="Toggle password visibility">
+              <svg class="eye-show w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg class="eye-hide w-5 h-5 hidden" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24M1 1l22 22"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label class="field-label">New Password</label>
+          <div class="relative">
+            <input type="password" id="new-pass" class="input pr-10" required minlength="6">
+            <button type="button" onclick="togglePassVisibility('new-pass', this)" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--ink)] p-1 rounded transition focus:outline-none" aria-label="Toggle password visibility">
+              <svg class="eye-show w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg class="eye-hide w-5 h-5 hidden" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24M1 1l22 22"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label class="field-label">Confirm New Password</label>
+          <div class="relative">
+            <input type="password" id="confirm-pass" class="input pr-10" required minlength="6">
+            <button type="button" onclick="togglePassVisibility('confirm-pass', this)" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--ink)] p-1 rounded transition focus:outline-none" aria-label="Toggle password visibility">
+              <svg class="eye-show w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg class="eye-hide w-5 h-5 hidden" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24M1 1l22 22"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div id="pwd-msg" class="text-xs hidden"></div>
+
+        <div class="flex justify-end pt-2 border-t border-[var(--line)]">
+          <button type="submit" class="btn btn-primary">Update Password</button>
+        </div>
+      </form>
+    </div>
+  </template>
+
+  <script src="js/common.js"></script>
+  <script>
+    const outlet = renderChrome('profile', 'User Profile');
+    outlet.innerHTML = document.getElementById('profile-tpl').innerHTML;
+
+    function togglePassVisibility(inputId, btn) {
+      const input = document.getElementById(inputId);
+      if (!input) return;
+      const isPassword = input.type === 'password';
+      input.type = isPassword ? 'text' : 'password';
+      const showIcon = btn.querySelector('.eye-show');
+      const hideIcon = btn.querySelector('.eye-hide');
+      if (showIcon) showIcon.classList.toggle('hidden', isPassword);
+      if (hideIcon) hideIcon.classList.toggle('hidden', !isPassword);
+    }
+
+    const u = Auth.currentUser();
+    if (u){
+      document.getElementById('prof-name').textContent = u.name;
+      document.getElementById('prof-role').textContent = u.role;
+      document.getElementById('prof-user').textContent = '@' + u.username;
+      document.getElementById('prof-email').textContent = u.email;
+      document.getElementById('prof-avatar').textContent = initials(u.name);
+    }
+
+    document.getElementById('form-pwd').addEventListener('submit', function(e){
+      e.preventDefault();
+      const cur = document.getElementById('cur-pass').value;
+      const nw = document.getElementById('new-pass').value;
+      const conf = document.getElementById('confirm-pass').value;
+      const msg = document.getElementById('pwd-msg');
+
+      if (nw !== conf){
+        msg.className = 'text-xs text-red-600 block';
+        msg.textContent = 'New passwords do not match!';
+        return;
+      }
+
+      const ok = Auth.changePassword(u.id, cur, nw);
+      if (!ok){
+        msg.className = 'text-xs text-red-600 block';
+        msg.textContent = 'Current password incorrect.';
+      } else {
+        msg.className = 'text-xs text-green-600 block';
+        msg.textContent = '✓ Password changed successfully!';
+        document.getElementById('form-pwd').reset();
+      }
+    });
+  </script>
+</body>
+</html>

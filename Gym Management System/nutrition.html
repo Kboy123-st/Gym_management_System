@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iron & Lime — Nutrition Plans</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app-shell"></div>
+
+  <template id="nutrition-tpl">
+    <div class="space-y-4">
+      <div class="card p-4 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+        <input id="search-nutrition" class="input !w-64" type="search" placeholder="Search by plan or member...">
+        <button id="btn-add-nutrition" class="btn btn-primary flex-shrink-0">+ New Nutrition Plan</button>
+      </div>
+
+      <div id="nutrition-grid" class="grid md:grid-cols-2 gap-4"></div>
+    </div>
+  </template>
+
+  <script src="js/common.js"></script>
+  <script>
+    const outlet = renderChrome('nutrition', 'Nutrition & Meal Plans');
+    outlet.innerHTML = document.getElementById('nutrition-tpl').innerHTML;
+
+    function renderNutrition(){
+      const list = DB.get('nutrition', []);
+      const search = (document.getElementById('search-nutrition').value || '').toLowerCase();
+
+      const filtered = list.filter(n => {
+        const m = memberById(n.memberId);
+        const mName = m ? m.fullName.toLowerCase() : '';
+        return !search || n.name.toLowerCase().includes(search) || mName.includes(search);
+      });
+
+      const grid = document.getElementById('nutrition-grid');
+      if (!filtered.length){
+        grid.innerHTML = '<div class="col-span-full card p-8 text-center text-xs text-[var(--muted)]">No meal plans created yet.</div>';
+        return;
+      }
+
+      grid.innerHTML = filtered.map(n => {
+        const m = memberById(n.memberId);
+
+        return `
+          <div class="card p-5 flex flex-col justify-between">
+            <div>
+              <div class="flex items-start justify-between">
+                <div>
+                  <h3 class="font-display text-2xl font-bold text-[var(--ink)]">${escapeHtml(n.name)}</h3>
+                  <p class="text-xs text-[var(--muted)] mt-0.5">Assigned to: <strong class="text-[var(--ink)]">${escapeHtml(m ? m.fullName : 'Unassigned')}</strong></p>
+                </div>
+                <div class="text-right">
+                  <span class="font-display text-2xl font-bold text-[var(--teal-950)]">${n.totalCalories}</span>
+                  <span class="text-[10px] text-[var(--muted)] block">kcal / day</span>
+                </div>
+              </div>
+
+              <div class="mt-4 space-y-2">
+                <span class="text-[11px] font-semibold text-[var(--ink-soft)] uppercase tracking-wider block">Daily Meal Breakdown:</span>
+                <div class="divide-y divide-[var(--line)] border border-[var(--line)] rounded-lg overflow-hidden bg-[var(--bg)] text-xs">
+                  ${(n.meals || []).map(meal => `
+                    <div class="p-2.5 flex justify-between items-center">
+                      <div>
+                        <strong class="text-[var(--ink)]">${escapeHtml(meal.name)}</strong>
+                        <span class="text-[11px] text-[var(--muted)] block">${escapeHtml(meal.notes || '')}</span>
+                      </div>
+                      <div class="text-right">
+                        <span class="font-mono text-xs font-semibold">${meal.calories} kcal</span>
+                        <span class="text-[10px] text-[var(--muted)] block">${meal.time}</span>
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+
+              ${n.notes ? `<p class="text-xs text-[var(--ink-soft)] mt-3 italic bg-amber-50 border border-amber-200 p-2 rounded">${escapeHtml(n.notes)}</p>` : ''}
+            </div>
+
+            <div class="flex justify-end gap-2 pt-3 mt-4 border-t border-[var(--line)]">
+              <button onclick="editNutrition('${n.id}')" class="btn btn-outline btn-sm text-xs">Edit</button>
+              <button onclick="deleteNutrition('${n.id}')" class="btn btn-danger btn-sm text-xs">Del</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function showNutritionModal(nId){
+      const isEdit = Boolean(nId);
+      const n = isEdit ? DB.get('nutrition', []).find(x => x.id === nId) : { memberId:'', name:'', totalCalories:2000, meals:[{name:'Breakfast',time:'08:00',calories:500,notes:''}], notes:'' };
+      const members = DB.get('members', []);
+
+      const html = `
+        <form id="form-nutrition" class="p-6 space-y-4">
+          <div class="flex items-center justify-between border-b border-[var(--line)] pb-3">
+            <h3 class="font-display text-2xl font-bold text-[var(--ink)]">${isEdit ? 'Edit Meal Plan' : 'Create Nutrition Plan'}</h3>
+            <button type="button" onclick="closeModal()" class="text-2xl text-[var(--muted)]">&times;</button>
+          </div>
+
+          <div class="grid md:grid-cols-2 gap-3">
+            <div>
+              <label class="field-label">Plan Title *</label>
+              <input name="name" class="input" required value="${escapeHtml(n.name)}">
+            </div>
+            <div>
+              <label class="field-label">Target Member *</label>
+              <select name="memberId" class="input" required>
+                <option value="">-- Select Member --</option>
+                ${members.map(m => `<option value="${m.id}" ${n.memberId===m.id?'selected':''}>${escapeHtml(m.fullName)} (${m.memberCode})</option>`).join('')}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="field-label">Target Daily Calories (kcal)</label>
+            <input type="number" name="totalCalories" class="input" required value="${n.totalCalories}">
+          </div>
+
+          <div>
+            <div class="flex justify-between items-center mb-2">
+              <label class="field-label !mb-0">Meals Schedule</label>
+              <button type="button" id="btn-add-meal-row" class="text-xs font-semibold text-[var(--teal-700)] hover:underline">+ Add Meal</button>
+            </div>
+            <div id="meal-rows" class="space-y-2">
+              ${(n.meals || []).map((m,idx) => `
+                <div class="flex gap-2 items-center">
+                  <input name="m_name[]" class="input flex-1" placeholder="Meal name" required value="${escapeHtml(m.name)}">
+                  <input type="time" name="m_time[]" class="input !w-28" required value="${m.time}">
+                  <input type="number" name="m_cal[]" class="input !w-24" placeholder="kcal" required value="${m.calories}">
+                  <input name="m_notes[]" class="input flex-1" placeholder="Items / food" value="${escapeHtml(m.notes || '')}">
+                  <button type="button" onclick="this.parentElement.remove()" class="text-red-600 px-1">&times;</button>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <div>
+            <label class="field-label">Dietary Guidance &amp; Coaching Notes</label>
+            <textarea name="notes" class="input" rows="2">${escapeHtml(n.notes || '')}</textarea>
+          </div>
+
+          <div class="flex justify-end gap-2 pt-3 border-t border-[var(--line)]">
+            <button type="button" onclick="closeModal()" class="btn btn-outline">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Plan</button>
+          </div>
+        </form>
+      `;
+      openModal(html, { width:'max-w-2xl' });
+
+      document.getElementById('btn-add-meal-row').addEventListener('click', () => {
+        const div = document.createElement('div');
+        div.className = 'flex gap-2 items-center';
+        div.innerHTML = `
+          <input name="m_name[]" class="input flex-1" placeholder="Meal name" required>
+          <input type="time" name="m_time[]" class="input !w-28" required value="12:00">
+          <input type="number" name="m_cal[]" class="input !w-24" placeholder="kcal" required value="500">
+          <input name="m_notes[]" class="input flex-1" placeholder="Items / food">
+          <button type="button" onclick="this.parentElement.remove()" class="text-red-600 px-1">&times;</button>
+        `;
+        document.getElementById('meal-rows').appendChild(div);
+      });
+
+      document.getElementById('form-nutrition').addEventListener('submit', function(e){
+        e.preventDefault();
+        const fd = new FormData(this);
+        const names = fd.getAll('m_name[]');
+        const times = fd.getAll('m_time[]');
+        const cals  = fd.getAll('m_cal[]');
+        const notes = fd.getAll('m_notes[]');
+
+        const meals = names.map((name, i) => ({
+          name: name.trim(),
+          time: times[i],
+          calories: parseInt(cals[i], 10),
+          notes: notes[i].trim()
+        }));
+
+        const all = DB.get('nutrition', []);
+        if (isEdit){
+          const target = all.find(x => x.id === nId);
+          Object.assign(target, {
+            name: fd.get('name').trim(),
+            memberId: fd.get('memberId'),
+            totalCalories: parseInt(fd.get('totalCalories'), 10),
+            notes: fd.get('notes').trim(),
+            meals
+          });
+          DB.set('nutrition', all);
+          toast('Plan updated', 'success');
+        } else {
+          all.push({
+            id: uid('NT'),
+            name: fd.get('name').trim(),
+            memberId: fd.get('memberId'),
+            totalCalories: parseInt(fd.get('totalCalories'), 10),
+            notes: fd.get('notes').trim(),
+            meals
+          });
+          DB.set('nutrition', all);
+          toast('Nutrition plan created', 'success');
+        }
+        closeModal();
+        renderNutrition();
+      });
+    }
+
+    function editNutrition(id){ showNutritionModal(id); }
+
+    function deleteNutrition(id){
+      if (!confirm('Delete this meal plan?')) return;
+      const all = DB.get('nutrition', []).filter(x => x.id !== id);
+      DB.set('nutrition', all);
+      toast('Meal plan deleted', 'success');
+      renderNutrition();
+    }
+
+    document.getElementById('btn-add-nutrition').addEventListener('click', () => showNutritionModal());
+    document.getElementById('search-nutrition').addEventListener('input', renderNutrition);
+
+    renderNutrition();
+  </script>
+</body>
+</html>

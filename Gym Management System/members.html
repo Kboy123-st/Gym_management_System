@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iron & Lime — Members</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app-shell"></div>
+
+  <template id="members-tpl">
+    <div class="space-y-4">
+      <!-- Toolbar -->
+      <div class="card p-4 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+        <div class="flex flex-1 flex-wrap items-center gap-2">
+          <input id="search-input" class="input !w-64" type="search" placeholder="Search by name, code, phone...">
+          <select id="filter-gender" class="input !w-36">
+            <option value="">All Genders</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+            <option value="Other">Other</option>
+          </select>
+          <select id="filter-status" class="input !w-40">
+            <option value="">All Statuses</option>
+            <option value="Active">Active Plan</option>
+            <option value="Expired">Expired</option>
+            <option value="None">No Plan</option>
+          </select>
+        </div>
+        <button id="btn-add-member" class="btn btn-primary flex-shrink-0">+ Register Member</button>
+      </div>
+
+      <!-- Members Table -->
+      <div class="card overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Member</th>
+                <th>Contact</th>
+                <th>Assigned Trainer</th>
+                <th>Active Plan</th>
+                <th>Expires</th>
+                <th>Status</th>
+                <th class="text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="tbl-members"></tbody>
+          </table>
+        </div>
+        <div class="p-3 border-t border-[var(--line)] text-xs text-[var(--muted)] flex justify-between items-center">
+          <span>Showing <strong id="lbl-count" class="text-[var(--ink)]">0</strong> members</span>
+          <span class="text-[11px]">Click a member for full profile</span>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <script src="js/common.js"></script>
+  <script>
+    const outlet = renderChrome('members', 'Member Directory');
+    outlet.innerHTML = document.getElementById('members-tpl').innerHTML;
+
+    let filterText = '';
+    let filterGender = '';
+    let filterStatus = '';
+
+    function renderTable(){
+      refreshMembershipStatuses();
+      const members = DB.get('members', []);
+      const trainers = DB.get('trainers', []);
+      const plans = DB.get('plans', []);
+
+      const filtered = members.filter(m => {
+        const ms = activeMembershipFor(m.id);
+        const matchText = !filterText || (
+          m.fullName.toLowerCase().includes(filterText) ||
+          m.memberCode.toLowerCase().includes(filterText) ||
+          m.phone.includes(filterText)
+        );
+        const matchGender = !filterGender || m.gender === filterGender;
+        let matchStatus = true;
+        if (filterStatus === 'Active')  matchStatus = ms && ms.status === 'Active';
+        if (filterStatus === 'Expired') matchStatus = ms && ms.status === 'Expired';
+        if (filterStatus === 'None')    matchStatus = !ms;
+
+        return matchText && matchGender && matchStatus;
+      });
+
+      document.getElementById('lbl-count').textContent = filtered.length;
+      const tbody = document.getElementById('tbl-members');
+
+      if (!filtered.length){
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-xs text-[var(--muted)]">No members found matching the criteria.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(m => {
+        const ms = activeMembershipFor(m.id);
+        const tr = m.trainerId ? trainerById(m.trainerId) : null;
+        const plan = ms ? planById(ms.planId) : null;
+
+        let statusBadge = '<span class="badge badge-muted text-[10px]">No Plan</span>';
+        if (ms){
+          if (ms.status === 'Active')   statusBadge = '<span class="badge badge-success text-[10px]">Active</span>';
+          if (ms.status === 'Expired')  statusBadge = '<span class="badge badge-danger text-[10px]">Expired</span>';
+          if (ms.status === 'Frozen')   statusBadge = '<span class="badge badge-info text-[10px]">Frozen</span>';
+          if (ms.status === 'Cancelled')statusBadge = '<span class="badge badge-muted text-[10px]">Cancelled</span>';
+        }
+
+        const avatar = m.photo
+          ? `<img src="${m.photo}" class="w-9 h-9 rounded-full object-cover">`
+          : `<div class="avatar">${initials(m.fullName)}</div>`;
+
+        return `<tr>
+          <td>
+            <div class="flex items-center gap-3">
+              ${avatar}
+              <div>
+                <a href="#" onclick="viewMember('${m.id}');return false;" class="font-semibold text-[var(--ink)] hover:text-[var(--teal-700)]">${escapeHtml(m.fullName)}</a>
+                <div class="text-[11px] text-[var(--muted)]">${m.memberCode} • ${m.gender}</div>
+              </div>
+            </div>
+          </td>
+          <td>
+            <div class="text-xs text-[var(--ink)]">${m.phone}</div>
+            <div class="text-[11px] text-[var(--muted)]">${escapeHtml(m.email || '—')}</div>
+          </td>
+          <td class="text-xs">${tr ? escapeHtml(tr.name) : '<span class="text-[var(--muted)]">Unassigned</span>'}</td>
+          <td class="text-xs font-medium">${plan ? escapeHtml(plan.name) : '—'}</td>
+          <td class="text-xs">${ms ? fmtDate(ms.endDate) : '—'}</td>
+          <td>${statusBadge}</td>
+          <td class="text-right">
+            <button onclick="viewMember('${m.id}')" class="btn btn-outline btn-sm text-xs">View</button>
+            <button onclick="editMember('${m.id}')" class="btn btn-outline btn-sm text-xs">Edit</button>
+            <button onclick="deleteMember('${m.id}')" class="btn btn-danger btn-sm text-xs">Del</button>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    // Modal: add / edit member
+    function showMemberModal(memId){
+      const isEdit = Boolean(memId);
+      const m = isEdit ? memberById(memId) : { fullName:'', gender:'Male', dob:'', phone:'', email:'', address:'', emergencyContact:'', emergencyPhone:'', trainerId:'', photo:'' };
+      const trainers = DB.get('trainers', []).filter(t => t.status === 'Active');
+
+      const html = `
+        <form id="form-member" class="p-6 space-y-4">
+          <div class="flex items-center justify-between border-b border-[var(--line)] pb-3">
+            <h3 class="font-display text-2xl font-bold text-[var(--ink)]">${isEdit ? 'Edit Member' : 'Register New Member'}</h3>
+            <button type="button" onclick="closeModal()" class="text-[var(--muted)] hover:text-black">&times;</button>
+          </div>
+
+          <div class="grid md:grid-cols-2 gap-3">
+            <div class="md:col-span-2">
+              <label class="field-label">Full Name *</label>
+              <input name="fullName" class="input" required value="${escapeHtml(m.fullName)}">
+            </div>
+
+            <div>
+              <label class="field-label">Gender</label>
+              <select name="gender" class="input">
+                <option value="Male" ${m.gender==='Male'?'selected':''}>Male</option>
+                <option value="Female" ${m.gender==='Female'?'selected':''}>Female</option>
+                <option value="Other" ${m.gender==='Other'?'selected':''}>Other</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="field-label">Date of Birth</label>
+              <input type="date" name="dob" class="input" value="${m.dob || ''}">
+            </div>
+
+            <div>
+              <label class="field-label">Phone Number *</label>
+              <input name="phone" class="input" required value="${escapeHtml(m.phone)}">
+            </div>
+
+            <div>
+              <label class="field-label">Email</label>
+              <input type="email" name="email" class="input" value="${escapeHtml(m.email || '')}">
+            </div>
+
+            <div class="md:col-span-2">
+              <label class="field-label">Address</label>
+              <input name="address" class="input" value="${escapeHtml(m.address || '')}">
+            </div>
+
+            <div>
+              <label class="field-label">Emergency Contact Name</label>
+              <input name="emergencyContact" class="input" value="${escapeHtml(m.emergencyContact || '')}">
+            </div>
+
+            <div>
+              <label class="field-label">Emergency Contact Phone</label>
+              <input name="emergencyPhone" class="input" value="${escapeHtml(m.emergencyPhone || '')}">
+            </div>
+
+            <div class="md:col-span-2">
+              <label class="field-label">Assign Personal Trainer</label>
+              <select name="trainerId" class="input">
+                <option value="">None (General Gym Access)</option>
+                ${trainers.map(t => `<option value="${t.id}" ${m.trainerId===t.id?'selected':''}>${escapeHtml(t.name)} — ${t.specialty}</option>`).join('')}
+              </select>
+            </div>
+
+            <div class="md:col-span-2">
+              <label class="field-label">Photo (optional)</label>
+              <input type="file" id="member-photo-input" accept="image/*" class="input text-xs">
+              <input type="hidden" name="photo" id="member-photo-val" value="${m.photo || ''}">
+              <div id="photo-preview" class="mt-2 ${m.photo ? '' : 'hidden'}">
+                <img src="${m.photo || ''}" class="w-14 h-14 rounded-full object-cover border border-[var(--line)]">
+              </div>
+            </div>
+          </div>
+
+          <div class="flex justify-end gap-2 pt-3 border-t border-[var(--line)]">
+            <button type="button" onclick="closeModal()" class="btn btn-outline">Cancel</button>
+            <button type="submit" class="btn btn-primary">${isEdit ? 'Save Changes' : 'Register'}</button>
+          </div>
+        </form>
+      `;
+      openModal(html, { width:'max-w-2xl' });
+
+      // Handle photo data URL conversion
+      document.getElementById('member-photo-input').addEventListener('change', function(){
+        const file = this.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e){
+          document.getElementById('member-photo-val').value = e.target.result;
+          const prev = document.getElementById('photo-preview');
+          prev.innerHTML = `<img src="${e.target.result}" class="w-14 h-14 rounded-full object-cover border border-[var(--line)]">`;
+          prev.classList.remove('hidden');
+        };
+        reader.readAsDataURL(file);
+      });
+
+      document.getElementById('form-member').addEventListener('submit', function(e){
+        e.preventDefault();
+        const fd = new FormData(this);
+        const all = DB.get('members', []);
+
+        if (isEdit){
+          const target = all.find(x => x.id === memId);
+          Object.assign(target, {
+            fullName: fd.get('fullName').trim(),
+            gender: fd.get('gender'),
+            dob: fd.get('dob'),
+            phone: fd.get('phone').trim(),
+            email: fd.get('email').trim(),
+            address: fd.get('address').trim(),
+            emergencyContact: fd.get('emergencyContact').trim(),
+            emergencyPhone: fd.get('emergencyPhone').trim(),
+            trainerId: fd.get('trainerId') || '',
+            photo: fd.get('photo') || target.photo || ''
+          });
+          DB.set('members', all);
+          toast('Member updated', 'success');
+        } else {
+          const newMem = {
+            id: uid('M'),
+            memberCode: 'MEM-' + String(1000 + all.length + 1),
+            fullName: fd.get('fullName').trim(),
+            gender: fd.get('gender'),
+            dob: fd.get('dob'),
+            phone: fd.get('phone').trim(),
+            email: fd.get('email').trim(),
+            address: fd.get('address').trim(),
+            emergencyContact: fd.get('emergencyContact').trim(),
+            emergencyPhone: fd.get('emergencyPhone').trim(),
+            registrationDate: todayISO(),
+            trainerId: fd.get('trainerId') || '',
+            photo: fd.get('photo') || ''
+          };
+          all.unshift(newMem);
+          DB.set('members', all);
+          toast('Member registered: ' + newMem.memberCode, 'success');
+        }
+        closeModal();
+        renderTable();
+      });
+    }
+
+    // View Member Profile drawer/modal
+    function viewMember(memId){
+      const m = memberById(memId);
+      if (!m) return;
+      const ms = activeMembershipFor(memId);
+      const plan = ms ? planById(ms.planId) : null;
+      const tr = m.trainerId ? trainerById(m.trainerId) : null;
+      const attList = DB.get('attendance', []).filter(a => a.memberId === memId).slice(0, 5);
+      const pmtList = DB.get('payments', []).filter(p => p.memberId === memId).slice(0, 5);
+
+      const html = `
+        <div class="p-6 space-y-5">
+          <div class="flex items-center justify-between border-b border-[var(--line)] pb-3">
+            <div class="flex items-center gap-3">
+              ${m.photo ? `<img src="${m.photo}" class="w-12 h-12 rounded-full object-cover">` : `<div class="avatar text-base">${initials(m.fullName)}</div>`}
+              <div>
+                <h3 class="font-display text-2xl font-bold text-[var(--ink)]">${escapeHtml(m.fullName)}</h3>
+                <p class="text-xs text-[var(--muted)]">${m.memberCode} • Member since ${fmtDate(m.registrationDate)}</p>
+              </div>
+            </div>
+            <button onclick="closeModal()" class="text-2xl text-[var(--muted)]">&times;</button>
+          </div>
+
+          <div class="grid md:grid-cols-3 gap-3">
+            <div class="card p-3">
+              <span class="text-[11px] text-[var(--muted)] block">Membership Plan</span>
+              <strong class="text-sm">${plan ? escapeHtml(plan.name) : 'No active plan'}</strong>
+              <div class="text-xs text-[var(--muted)] mt-1">${ms ? 'Expires ' + fmtDate(ms.endDate) : '—'}</div>
+            </div>
+            <div class="card p-3">
+              <span class="text-[11px] text-[var(--muted)] block">Personal Trainer</span>
+              <strong class="text-sm">${tr ? escapeHtml(tr.name) : 'None assigned'}</strong>
+              <div class="text-xs text-[var(--muted)] mt-1">${tr ? tr.phone : '—'}</div>
+            </div>
+            <div class="card p-3">
+              <span class="text-[11px] text-[var(--muted)] block">Total Check-ins</span>
+              <strong class="text-sm">${DB.get('attendance', []).filter(a=>a.memberId===memId).length} visits</strong>
+              <div class="text-xs text-[var(--muted)] mt-1">All time</div>
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <h4 class="font-display text-base font-bold text-[var(--ink)]">Personal &amp; Emergency Details</h4>
+            <div class="grid grid-cols-2 text-xs gap-y-1.5 p-3 rounded bg-[var(--bg)]">
+              <div><span class="text-[var(--muted)]">Phone:</span> ${m.phone}</div>
+              <div><span class="text-[var(--muted)]">Email:</span> ${m.email || '—'}</div>
+              <div><span class="text-[var(--muted)]">Gender:</span> ${m.gender}</div>
+              <div><span class="text-[var(--muted)]">DOB:</span> ${fmtDate(m.dob)}</div>
+              <div class="col-span-2"><span class="text-[var(--muted)]">Address:</span> ${escapeHtml(m.address || '—')}</div>
+              <div class="col-span-2"><span class="text-[var(--muted)]">Emergency:</span> ${escapeHtml(m.emergencyContact || '—')} (${m.emergencyPhone || '—'})</div>
+            </div>
+          </div>
+
+          <div class="flex justify-end gap-2 pt-2 border-t border-[var(--line)]">
+            <a href="memberships.html?memberId=${m.id}" class="btn btn-outline btn-sm">Assign Plan</a>
+            <a href="payments.html?action=new&memberId=${m.id}" class="btn btn-outline btn-sm">Record Payment</a>
+            <button onclick="editMember('${m.id}')" class="btn btn-primary btn-sm">Edit Profile</button>
+          </div>
+        </div>
+      `;
+      openModal(html, { width:'max-w-xl' });
+    }
+
+    function editMember(id){ showMemberModal(id); }
+
+    function deleteMember(id){
+      const m = memberById(id);
+      if (!m) return;
+      if (!confirm(`Delete member ${m.fullName} (${m.memberCode})?\nThis will remove their history.`)) return;
+      const all = DB.get('members', []).filter(x => x.id !== id);
+      DB.set('members', all);
+      toast('Member removed', 'success');
+      renderTable();
+    }
+
+    // Event wiring
+    document.getElementById('btn-add-member').addEventListener('click', () => showMemberModal());
+    document.getElementById('search-input').addEventListener('input', e => { filterText = e.target.value.toLowerCase(); renderTable(); });
+    document.getElementById('filter-gender').addEventListener('change', e => { filterGender = e.target.value; renderTable(); });
+    document.getElementById('filter-status').addEventListener('change', e => { filterStatus = e.target.value; renderTable(); });
+
+    // Auto-open modal if requested via URL
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('action') === 'new') showMemberModal();
+
+    renderTable();
+  </script>
+</body>
+</html>

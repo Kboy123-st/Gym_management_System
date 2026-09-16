@@ -1,0 +1,6 @@
+{
+  "name": "Iron & Lime - Gym Management System",
+  "description": "Comprehensive gym management system featuring member tracking, class scheduling, automated recurring billing, and session attendance.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

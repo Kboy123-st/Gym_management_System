@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iron & Lime - Gym Management System</title>
+  <meta name="description" content="Comprehensive gym management system featuring member tracking, class scheduling, automated recurring billing, and session attendance.">
+  <meta property="og:title" content="Iron & Lime - Gym Management System">
+  <meta property="og:description" content="Comprehensive gym management system featuring member tracking, class scheduling, automated recurring billing, and session attendance.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="min-h-screen bg-[#0B211D] flex items-center justify-center p-4">
+  <div class="w-full max-w-4xl grid md:grid-cols-2 rounded-2xl overflow-hidden shadow-2xl border border-white/10">
+    <div class="bg-[#0E2B27] p-8 md:p-12 flex flex-col justify-between text-white relative">
+      <div>
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--lime)]/10 text-[var(--lime)] text-xs font-semibold tracking-wider uppercase mb-6">
+          Gym Management System
+        </div>
+        <h1 class="font-display text-4xl md:text-5xl font-bold tracking-tight text-white leading-none">
+          IRON &amp; LIME
+        </h1>
+        <p class="text-white/70 mt-3 text-sm leading-relaxed">
+          Run the floor. Not the spreadsheets. Manage members, plans, attendance, trainers, and billing from one focused console.
+        </p>
+      </div>
+      <div class="mt-8 pt-8 border-t border-white/10 text-xs text-white/50 flex justify-between">
+        <span>v1.0 Student Backend &amp; Console</span>
+        <a href="assignment.html" class="text-[var(--lime)] hover:underline">Rubric &amp; PHP Docs &rarr;</a>
+      </div>
+    </div>
+
+    <div class="bg-white p-8 md:p-12 flex flex-col justify-center">
+      <h2 class="font-display text-3xl font-bold text-[var(--ink)]">Sign in</h2>
+      <p class="text-sm text-[var(--muted)] mt-1">Select a demo role or type credentials</p>
+
+      <div class="grid grid-cols-3 gap-2 my-5">
+        <button type="button" onclick="fillDemo('admin')" class="btn btn-outline text-xs py-2">
+          <strong class="block text-[var(--ink)]">Admin</strong>
+          <span class="text-[10px] text-[var(--muted)]">Full access</span>
+        </button>
+        <button type="button" onclick="fillDemo('reception')" class="btn btn-outline text-xs py-2">
+          <strong class="block text-[var(--ink)]">Reception</strong>
+          <span class="text-[10px] text-[var(--muted)]">Front desk</span>
+        </button>
+        <button type="button" onclick="fillDemo('trainer')" class="btn btn-outline text-xs py-2">
+          <strong class="block text-[var(--ink)]">Trainer</strong>
+          <span class="text-[10px] text-[var(--muted)]">Plans &amp; classes</span>
+        </button>
+      </div>
+
+      <form id="login-form" class="space-y-4">
+        <div>
+          <label class="field-label" for="username">Username</label>
+          <input id="username" class="input" type="text" required placeholder="e.g. admin">
+        </div>
+        <div>
+          <label class="field-label" for="password">Password</label>
+          <div class="relative">
+            <input id="password" class="input pr-10" type="password" required placeholder="••••••••">
+            <button type="button" id="toggle-password" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--ink)] p-1 rounded transition focus:outline-none" aria-label="Toggle password visibility">
+              <svg id="eye-show" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg id="eye-hide" class="w-5 h-5 hidden" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24M1 1l22 22"/></svg>
+            </button>
+          </div>
+        </div>
+        <div id="login-error" class="text-xs text-red-600 hidden"></div>
+        <button type="submit" class="btn btn-primary w-full py-3">Sign in to console</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="js/common.js"></script>
+  <script>
+    if (Auth.currentUser()){ window.location.href = 'dashboard.html'; }
+
+    function fillDemo(role){
+      const presets = {
+        admin:     { u:'admin',     p:'admin123' },
+        reception: { u:'reception', p:'front123' },
+        trainer:   { u:'trainer',   p:'train123' }
+      };
+      const c = presets[role];
+      document.getElementById('username').value = c.u;
+      document.getElementById('password').value = c.p;
+    }
+
+    const toggleBtn = document.getElementById('toggle-password');
+    const pwdInput = document.getElementById('password');
+    const eyeShow = document.getElementById('eye-show');
+    const eyeHide = document.getElementById('eye-hide');
+
+    toggleBtn.addEventListener('click', () => {
+      const isPassword = pwdInput.type === 'password';
+      pwdInput.type = isPassword ? 'text' : 'password';
+      eyeShow.classList.toggle('hidden', isPassword);
+      eyeHide.classList.toggle('hidden', !isPassword);
+    });
+
+    document.getElementById('login-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const u = document.getElementById('username').value.trim();
+      const p = document.getElementById('password').value.trim();
+      const err = document.getElementById('login-error');
+      const user = Auth.login(u, p);
+      if (!user){
+        err.textContent = 'Invalid username or password. Try a demo role above.';
+        err.classList.remove('hidden');
+        return;
+      }
+      window.location.href = 'dashboard.html';
+    });
+  </script>
+</body>
+</html>

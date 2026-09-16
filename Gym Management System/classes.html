@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iron & Lime — Group Classes</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app-shell"></div>
+
+  <template id="classes-tpl">
+    <div class="space-y-4">
+      <div class="card p-4 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+        <div class="flex items-center gap-2 flex-1">
+          <input id="search-classes" class="input !w-64" type="search" placeholder="Search class name, category...">
+          <select id="filter-class-cat" class="input !w-40">
+            <option value="">All Categories</option>
+            <option value="Yoga">Yoga</option>
+            <option value="HIIT">HIIT</option>
+            <option value="Zumba">Zumba</option>
+            <option value="Spinning">Spinning</option>
+            <option value="Pilates">Pilates</option>
+          </select>
+        </div>
+        <button id="btn-add-class" class="btn btn-primary flex-shrink-0">+ Schedule Class</button>
+      </div>
+
+      <div id="classes-grid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+    </div>
+  </template>
+
+  <script src="js/common.js"></script>
+  <script>
+    const outlet = renderChrome('classes', 'Group Fitness Classes');
+    outlet.innerHTML = document.getElementById('classes-tpl').innerHTML;
+
+    function renderClasses(){
+      const classes = DB.get('classes', []);
+      const trainers = DB.get('trainers', []);
+      const search = (document.getElementById('search-classes').value || '').toLowerCase();
+      const cat = document.getElementById('filter-class-cat').value;
+
+      const filtered = classes.filter(c => {
+        const matchSearch = !search || c.name.toLowerCase().includes(search) || c.category.toLowerCase().includes(search);
+        const matchCat = !cat || c.category === cat;
+        return matchSearch && matchCat;
+      });
+
+      const grid = document.getElementById('classes-grid');
+      if (!filtered.length){
+        grid.innerHTML = '<div class="col-span-full card p-8 text-center text-xs text-[var(--muted)]">No fitness classes scheduled.</div>';
+        return;
+      }
+
+      grid.innerHTML = filtered.map(c => {
+        const tr = trainerById(c.trainerId);
+        const enrolled = c.enrolledMemberIds ? c.enrolledMemberIds.length : 0;
+        const spotsLeft = c.capacity - enrolled;
+
+        return `
+          <div class="card p-5 flex flex-col justify-between">
+            <div>
+              <div class="flex items-start justify-between">
+                <div>
+                  <span class="badge badge-info text-[10px]">${escapeHtml(c.category)}</span>
+                  <h3 class="font-display text-2xl font-bold text-[var(--ink)] mt-1">${escapeHtml(c.name)}</h3>
+                </div>
+                <div class="text-right">
+                  <span class="text-xs font-mono font-bold text-[var(--teal-900)]">${c.time}</span>
+                  <span class="text-[10px] text-[var(--muted)] block">${c.day}</span>
+                </div>
+              </div>
+
+              <div class="mt-4 p-3 rounded bg-[var(--bg)] space-y-1.5 text-xs">
+                <div class="flex justify-between">
+                  <span class="text-[var(--muted)]">Instructor:</span>
+                  <strong>${tr ? escapeHtml(tr.name) : 'Unassigned'}</strong>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-[var(--muted)]">Capacity:</span>
+                  <span>${enrolled} / ${c.capacity} enrolled</span>
+                </div>
+                <div class="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden mt-1">
+                  <div class="bg-[var(--teal-700)] h-full" style="width:${Math.min(100, (enrolled/c.capacity)*100)}%"></div>
+                </div>
+                <div class="text-right text-[10px] ${spotsLeft <= 3 ? 'text-red-600 font-semibold' : 'text-[var(--muted)]'}">
+                  ${spotsLeft > 0 ? spotsLeft + ' spots remaining' : 'Class Full'}
+                </div>
+              </div>
+            </div>
+
+            <div class="flex justify-between items-center pt-3 mt-4 border-t border-[var(--line)]">
+              <button onclick="manageEnrollmentModal('${c.id}')" class="btn btn-outline btn-sm text-xs">Roster (${enrolled})</button>
+              <div class="flex gap-1">
+                <button onclick="editClass('${c.id}')" class="btn btn-outline btn-sm text-xs">Edit</button>
+                <button onclick="deleteClass('${c.id}')" class="btn btn-danger btn-sm text-xs">Del</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function showClassModal(classId){
+      const isEdit = Boolean(classId);
+      const c = isEdit ? DB.get('classes', []).find(x => x.id === classId) : { name:'', category:'Yoga', trainerId:'', day:'Mon/Wed/Fri', time:'07:00', capacity:20, enrolledMemberIds:[] };
+      const trainers = DB.get('trainers', []).filter(t => t.status === 'Active');
+
+      const html = `
+        <form id="form-class" class="p-6 space-y-4">
+          <div class="flex items-center justify-between border-b border-[var(--line)] pb-3">
+            <h3 class="font-display text-2xl font-bold text-[var(--ink)]">${isEdit ? 'Edit Class' : 'Schedule New Class'}</h3>
+            <button type="button" onclick="closeModal()" class="text-2xl text-[var(--muted)]">&times;</button>
+          </div>
+
+          <div>
+            <label class="field-label">Class Name *</label>
+            <input name="name" class="input" required value="${escapeHtml(c.name)}">
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="field-label">Category</label>
+              <select name="category" class="input">
+                <option value="Yoga" ${c.category==='Yoga'?'selected':''}>Yoga</option>
+                <option value="HIIT" ${c.category==='HIIT'?'selected':''}>HIIT</option>
+                <option value="Zumba" ${c.category==='Zumba'?'selected':''}>Zumba</option>
+                <option value="Spinning" ${c.category==='Spinning'?'selected':''}>Spinning</option>
+                <option value="Pilates" ${c.category==='Pilates'?'selected':''}>Pilates</option>
+                <option value="CrossFit" ${c.category==='CrossFit'?'selected':''}>CrossFit</option>
+              </select>
+            </div>
+            <div>
+              <label class="field-label">Trainer / Instructor *</label>
+              <select name="trainerId" class="input" required>
+                <option value="">-- Choose Trainer --</option>
+                ${trainers.map(t => `<option value="${t.id}" ${c.trainerId===t.id?'selected':''}>${escapeHtml(t.name)}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-3 gap-3">
+            <div>
+              <label class="field-label">Schedule Days</label>
+              <input name="day" class="input" placeholder="e.g. Mon/Wed/Fri" value="${escapeHtml(c.day)}">
+            </div>
+            <div>
+              <label class="field-label">Time</label>
+              <input type="time" name="time" class="input" required value="${c.time}">
+            </div>
+            <div>
+              <label class="field-label">Max Capacity</label>
+              <input type="number" name="capacity" class="input" required min="1" value="${c.capacity}">
+            </div>
+          </div>
+
+          <div class="flex justify-end gap-2 pt-3 border-t border-[var(--line)]">
+            <button type="button" onclick="closeModal()" class="btn btn-outline">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Class</button>
+          </div>
+        </form>
+      `;
+      openModal(html);
+
+      document.getElementById('form-class').addEventListener('submit', function(e){
+        e.preventDefault();
+        const fd = new FormData(this);
+        const all = DB.get('classes', []);
+
+        if (isEdit){
+          const target = all.find(x => x.id === classId);
+          Object.assign(target, {
+            name: fd.get('name').trim(),
+            category: fd.get('category'),
+            trainerId: fd.get('trainerId'),
+            day: fd.get('day').trim(),
+            time: fd.get('time'),
+            capacity: parseInt(fd.get('capacity'), 10)
+          });
+          DB.set('classes', all);
+          toast('Class updated', 'success');
+        } else {
+          all.push({
+            id: uid('CL'),
+            name: fd.get('name').trim(),
+            category: fd.get('category'),
+            trainerId: fd.get('trainerId'),
+            day: fd.get('day').trim(),
+            time: fd.get('time'),
+            capacity: parseInt(fd.get('capacity'), 10),
+            enrolledMemberIds: []
+          });
+          DB.set('classes', all);
+          toast('Class scheduled', 'success');
+        }
+        closeModal();
+        renderClasses();
+      });
+    }
+
+    function editClass(id){ showClassModal(id); }
+
+    function deleteClass(id){
+      if (!confirm('Cancel and delete this class?')) return;
+      const all = DB.get('classes', []).filter(x => x.id !== id);
+      DB.set('classes', all);
+      toast('Class removed', 'success');
+      renderClasses();
+    }
+
+    // Manage Enrollment roster modal
+    function manageEnrollmentModal(classId){
+      const c = DB.get('classes', []).find(x => x.id === classId);
+      if (!c) return;
+      const members = DB.get('members', []);
+      const enrolled = (c.enrolledMemberIds || []).map(id => memberById(id)).filter(Boolean);
+
+      const html = `
+        <div class="p-6 space-y-4">
+          <div class="flex items-center justify-between border-b border-[var(--line)] pb-3">
+            <div>
+              <h3 class="font-display text-2xl font-bold text-[var(--ink)]">${escapeHtml(c.name)} Roster</h3>
+              <p class="text-xs text-[var(--muted)]">${enrolled.length} / ${c.capacity} members enrolled</p>
+            </div>
+            <button onclick="closeModal()" class="text-2xl text-[var(--muted)]">&times;</button>
+          </div>
+
+          <form id="form-enroll" class="flex gap-2">
+            <select name="memberId" class="input flex-1" required>
+              <option value="">-- Enroll Member --</option>
+              ${members.filter(m => !(c.enrolledMemberIds||[]).includes(m.id)).map(m => `<option value="${m.id}">${escapeHtml(m.fullName)} (${m.memberCode})</option>`).join('')}
+            </select>
+            <button type="submit" class="btn btn-primary btn-sm whitespace-nowrap">+ Add</button>
+          </form>
+
+          <div class="divide-y divide-[var(--line)] max-h-60 overflow-y-auto">
+            ${!enrolled.length ? '<p class="text-xs text-[var(--muted)] py-4 text-center">No members enrolled yet.</p>' : enrolled.map(m => `
+              <div class="py-2 flex items-center justify-between">
+                <div>
+                  <div class="font-semibold text-xs text-[var(--ink)]">${escapeHtml(m.fullName)}</div>
+                  <div class="text-[10px] text-[var(--muted)]">${m.memberCode} • ${m.phone}</div>
+                </div>
+                <button onclick="removeEnrollment('${c.id}', '${m.id}')" class="btn btn-danger btn-sm text-[10px] py-1 px-2">Drop</button>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+      openModal(html);
+
+      document.getElementById('form-enroll').addEventListener('submit', function(e){
+        e.preventDefault();
+        const fd = new FormData(this);
+        const mId = fd.get('memberId');
+        if (!mId) return;
+
+        const all = DB.get('classes', []);
+        const target = all.find(x => x.id === classId);
+        if (!target.enrolledMemberIds) target.enrolledMemberIds = [];
+        if (target.enrolledMemberIds.length >= target.capacity){
+          toast('Class is already at maximum capacity!', 'error');
+          return;
+        }
+        target.enrolledMemberIds.push(mId);
+        DB.set('classes', all);
+        toast('Member enrolled', 'success');
+        manageEnrollmentModal(classId);
+        renderClasses();
+      });
+    }
+
+    function removeEnrollment(classId, memberId){
+      const all = DB.get('classes', []);
+      const target = all.find(x => x.id === classId);
+      if (!target) return;
+      target.enrolledMemberIds = (target.enrolledMemberIds || []).filter(id => id !== memberId);
+      DB.set('classes', all);
+      toast('Member removed from roster', 'info');
+      manageEnrollmentModal(classId);
+      renderClasses();
+    }
+
+    document.getElementById('btn-add-class').addEventListener('click', () => showClassModal());
+    document.getElementById('search-classes').addEventListener('input', renderClasses);
+    document.getElementById('filter-class-cat').addEventListener('change', renderClasses);
+
+    renderClasses();
+  </script>
+</body>
+</html>

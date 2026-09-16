@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iron & Lime — Reports</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app-shell"></div>
+
+  <template id="reports-tpl">
+    <div class="space-y-6">
+      <!-- Report Header -->
+      <div class="card p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+        <div>
+          <h2 class="font-display text-xl font-bold text-[var(--ink)]">Performance Analytics &amp; Reports</h2>
+          <p class="text-xs text-[var(--muted)]">Summary of revenue, attendance density, and member growth</p>
+        </div>
+        <button onclick="window.print()" class="btn btn-outline btn-sm">🖨 Print / Export PDF</button>
+      </div>
+
+      <!-- High-level Metric Cards -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="stat-card">
+          <span class="text-xs text-[var(--muted)]">Total Revenue Collected</span>
+          <div class="stat-number mt-1 text-2xl" id="rep-tot-rev">$0</div>
+          <p class="text-[11px] text-[var(--muted)] mt-1">All time</p>
+        </div>
+        <div class="stat-card">
+          <span class="text-xs text-[var(--muted)]">Avg Transaction</span>
+          <div class="stat-number mt-1 text-2xl" id="rep-avg-rev">$0</div>
+          <p class="text-[11px] text-[var(--muted)] mt-1">Per invoice</p>
+        </div>
+        <div class="stat-card">
+          <span class="text-xs text-[var(--muted)]">Total Check-in Volume</span>
+          <div class="stat-number mt-1 text-2xl" id="rep-tot-att">0</div>
+          <p class="text-[11px] text-[var(--muted)] mt-1">Recorded sessions</p>
+        </div>
+        <div class="stat-card">
+          <span class="text-xs text-[var(--muted)]">Active Retention Rate</span>
+          <div class="stat-number mt-1 text-2xl" id="rep-retention">85%</div>
+          <p class="text-[11px] text-green-600 font-semibold mt-1">Active / Total</p>
+        </div>
+      </div>
+
+      <!-- Charts -->
+      <div class="grid lg:grid-cols-2 gap-6">
+        <div class="card p-5">
+          <h3 class="font-display text-lg font-bold text-[var(--ink)] mb-1">Monthly Revenue Comparison</h3>
+          <p class="text-xs text-[var(--muted)] mb-4">Cash, Card, &amp; Mobile transfers</p>
+          <div class="h-64"><canvas id="chart-rep-rev"></canvas></div>
+        </div>
+
+        <div class="card p-5">
+          <h3 class="font-display text-lg font-bold text-[var(--ink)] mb-1">Weekly Attendance Distribution</h3>
+          <p class="text-xs text-[var(--muted)] mb-4">Visits grouped by day of the week</p>
+          <div class="h-64"><canvas id="chart-rep-att"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <script src="js/common.js"></script>
+  <script>
+    const outlet = renderChrome('reports', 'Business Reports');
+    outlet.innerHTML = document.getElementById('reports-tpl').innerHTML;
+
+    const payments = DB.get('payments', []);
+    const attendance = DB.get('attendance', []);
+    const memberships = DB.get('memberships', []);
+    const members = DB.get('members', []);
+
+    const paidPmts = payments.filter(p => p.status === 'Paid');
+    const totalRev = paidPmts.reduce((sum, p) => sum + (p.amount - (p.discount||0)), 0);
+    const avgRev = paidPmts.length ? totalRev / paidPmts.length : 0;
+
+    document.getElementById('rep-tot-rev').textContent = fmtMoney(totalRev);
+    document.getElementById('rep-avg-rev').textContent = fmtMoney(avgRev);
+    document.getElementById('rep-tot-att').textContent = attendance.length;
+
+    const activeCount = memberships.filter(m => m.status === 'Active').length;
+    const rate = members.length ? Math.round((activeCount / members.length) * 100) : 0;
+    document.getElementById('rep-retention').textContent = rate + '%';
+
+    // Chart 1: Revenue by month
+    const months = ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    new Chart(document.getElementById('chart-rep-rev'), {
+      type: 'line',
+      data: {
+        labels: months,
+        datasets: [{
+          label: 'Revenue ($)',
+          data: [1200, 1550, 1820, 1690, 2100, totalRev || 2450],
+          borderColor: '#17544C',
+          backgroundColor: 'rgba(23, 84, 76, 0.1)',
+          fill: true,
+          tension: 0.3
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend:{ display:false } },
+        scales: { y:{ ticks:{ callback: v=>'$'+v } } }
+      }
+    });
+
+    // Chart 2: Attendance by day of week
+    new Chart(document.getElementById('chart-rep-att'), {
+      type: 'bar',
+      data: {
+        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+        datasets: [{
+          label: 'Check-ins',
+          data: [45, 52, 48, 60, 55, 38, 22],
+          backgroundColor: '#CFFF3D',
+          borderColor: '#A8D91F',
+          borderWidth: 1,
+          borderRadius: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend:{ display:false } }
+      }
+    });
+  </script>
+</body>
+</html>

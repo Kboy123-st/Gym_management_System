@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iron & Lime — Workout Plans</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app-shell"></div>
+
+  <template id="workouts-tpl">
+    <div class="space-y-4">
+      <div class="card p-4 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+        <input id="search-workouts" class="input !w-64" type="search" placeholder="Search workout plans...">
+        <button id="btn-add-workout" class="btn btn-primary flex-shrink-0">+ Create Workout Plan</button>
+      </div>
+
+      <div id="workouts-grid" class="grid md:grid-cols-2 gap-4"></div>
+    </div>
+  </template>
+
+  <script src="js/common.js"></script>
+  <script>
+    const outlet = renderChrome('workouts', 'Workout Routines & Plans');
+    outlet.innerHTML = document.getElementById('workouts-tpl').innerHTML;
+
+    function renderWorkouts(){
+      const workouts = DB.get('workouts', []);
+      const search = (document.getElementById('search-workouts').value || '').toLowerCase();
+
+      const filtered = workouts.filter(w => !search || w.name.toLowerCase().includes(search) || w.category.toLowerCase().includes(search));
+
+      const grid = document.getElementById('workouts-grid');
+      if (!filtered.length){
+        grid.innerHTML = '<div class="col-span-full card p-8 text-center text-xs text-[var(--muted)]">No workout routines created yet.</div>';
+        return;
+      }
+
+      grid.innerHTML = filtered.map(w => {
+        const assignedCount = (w.assignedMemberIds || []).length;
+
+        return `
+          <div class="card p-5 flex flex-col justify-between">
+            <div>
+              <div class="flex items-start justify-between">
+                <div>
+                  <span class="badge badge-info text-[10px]">${escapeHtml(w.category)}</span>
+                  <h3 class="font-display text-2xl font-bold text-[var(--ink)] mt-1">${escapeHtml(w.name)}</h3>
+                </div>
+                <span class="badge badge-muted text-[10px]">${assignedCount} members</span>
+              </div>
+              <p class="text-xs text-[var(--muted)] mt-1">${escapeHtml(w.description || '')}</p>
+
+              <div class="mt-4">
+                <span class="text-[11px] font-semibold text-[var(--ink-soft)] uppercase tracking-wider block mb-2">Exercise Breakdown:</span>
+                <div class="divide-y divide-[var(--line)] border border-[var(--line)] rounded-lg overflow-hidden bg-[var(--bg)] text-xs">
+                  ${(w.exercises || []).map(ex => `
+                    <div class="p-2.5 flex justify-between items-center">
+                      <span class="font-medium text-[var(--ink)]">${escapeHtml(ex.name)}</span>
+                      <span class="font-mono text-[var(--muted)] text-[11px]">${ex.sets} sets × ${ex.reps}</span>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            </div>
+
+            <div class="flex justify-between items-center pt-3 mt-4 border-t border-[var(--line)]">
+              <button onclick="assignWorkoutModal('${w.id}')" class="btn btn-outline btn-sm text-xs">Assign Member</button>
+              <div class="flex gap-1">
+                <button onclick="editWorkout('${w.id}')" class="btn btn-outline btn-sm text-xs">Edit</button>
+                <button onclick="deleteWorkout('${w.id}')" class="btn btn-danger btn-sm text-xs">Del</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function showWorkoutModal(wId){
+      const isEdit = Boolean(wId);
+      const w = isEdit ? DB.get('workouts', []).find(x => x.id === wId) : { name:'', category:'Strength Training', description:'', exercises:[{name:'',sets:3,reps:'10'}], assignedMemberIds:[] };
+
+      const html = `
+        <form id="form-workout" class="p-6 space-y-4">
+          <div class="flex items-center justify-between border-b border-[var(--line)] pb-3">
+            <h3 class="font-display text-2xl font-bold text-[var(--ink)]">${isEdit ? 'Edit Routine' : 'New Workout Routine'}</h3>
+            <button type="button" onclick="closeModal()" class="text-2xl text-[var(--muted)]">&times;</button>
+          </div>
+
+          <div class="grid md:grid-cols-2 gap-3">
+            <div>
+              <label class="field-label">Routine Name *</label>
+              <input name="name" class="input" required value="${escapeHtml(w.name)}">
+            </div>
+            <div>
+              <label class="field-label">Category</label>
+              <select name="category" class="input">
+                <option value="Strength Training" ${w.category==='Strength Training'?'selected':''}>Strength Training</option>
+                <option value="Weight Loss" ${w.category==='Weight Loss'?'selected':''}>Weight Loss</option>
+                <option value="CrossFit" ${w.category==='CrossFit'?'selected':''}>CrossFit</option>
+                <option value="Yoga" ${w.category==='Yoga'?'selected':''}>Yoga</option>
+                <option value="Cardio" ${w.category==='Cardio'?'selected':''}>Cardio</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="field-label">Routine Description</label>
+            <input name="description" class="input" value="${escapeHtml(w.description || '')}">
+          </div>
+
+          <div>
+            <div class="flex justify-between items-center mb-2">
+              <label class="field-label !mb-0">Exercises List</label>
+              <button type="button" id="btn-add-exercise-row" class="text-xs font-semibold text-[var(--teal-700)] hover:underline">+ Add Exercise</button>
+            </div>
+            <div id="exercise-rows" class="space-y-2">
+              ${(w.exercises || []).map((ex,idx) => `
+                <div class="flex gap-2 items-center">
+                  <input name="ex_name[]" class="input flex-1" placeholder="Exercise name" required value="${escapeHtml(ex.name)}">
+                  <input type="number" name="ex_sets[]" class="input !w-20" placeholder="Sets" required min="1" value="${ex.sets}">
+                  <input name="ex_reps[]" class="input !w-24" placeholder="Reps" required value="${escapeHtml(ex.reps)}">
+                  <button type="button" onclick="this.parentElement.remove()" class="text-red-600 px-1">&times;</button>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <div class="flex justify-end gap-2 pt-3 border-t border-[var(--line)]">
+            <button type="button" onclick="closeModal()" class="btn btn-outline">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Routine</button>
+          </div>
+        </form>
+      `;
+      openModal(html, { width:'max-w-xl' });
+
+      document.getElementById('btn-add-exercise-row').addEventListener('click', () => {
+        const div = document.createElement('div');
+        div.className = 'flex gap-2 items-center';
+        div.innerHTML = `
+          <input name="ex_name[]" class="input flex-1" placeholder="Exercise name" required>
+          <input type="number" name="ex_sets[]" class="input !w-20" placeholder="Sets" required min="1" value="3">
+          <input name="ex_reps[]" class="input !w-24" placeholder="Reps" required value="10">
+          <button type="button" onclick="this.parentElement.remove()" class="text-red-600 px-1">&times;</button>
+        `;
+        document.getElementById('exercise-rows').appendChild(div);
+      });
+
+      document.getElementById('form-workout').addEventListener('submit', function(e){
+        e.preventDefault();
+        const fd = new FormData(this);
+        const names = fd.getAll('ex_name[]');
+        const sets = fd.getAll('ex_sets[]');
+        const reps = fd.getAll('ex_reps[]');
+
+        const exercises = names.map((name, i) => ({
+          name: name.trim(),
+          sets: parseInt(sets[i], 10),
+          reps: reps[i].trim()
+        }));
+
+        const all = DB.get('workouts', []);
+        if (isEdit){
+          const target = all.find(x => x.id === wId);
+          Object.assign(target, {
+            name: fd.get('name').trim(),
+            category: fd.get('category'),
+            description: fd.get('description').trim(),
+            exercises
+          });
+          DB.set('workouts', all);
+          toast('Routine updated', 'success');
+        } else {
+          all.push({
+            id: uid('WK'),
+            name: fd.get('name').trim(),
+            category: fd.get('category'),
+            description: fd.get('description').trim(),
+            exercises,
+            assignedMemberIds: []
+          });
+          DB.set('workouts', all);
+          toast('Routine created', 'success');
+        }
+        closeModal();
+        renderWorkouts();
+      });
+    }
+
+    function editWorkout(id){ showWorkoutModal(id); }
+
+    function deleteWorkout(id){
+      if (!confirm('Delete this workout routine?')) return;
+      const all = DB.get('workouts', []).filter(x => x.id !== id);
+      DB.set('workouts', all);
+      toast('Routine deleted', 'success');
+      renderWorkouts();
+    }
+
+    function assignWorkoutModal(wId){
+      const w = DB.get('workouts', []).find(x => x.id === wId);
+      if (!w) return;
+      const members = DB.get('members', []);
+
+      const html = `
+        <div class="p-6 space-y-4">
+          <div class="flex items-center justify-between border-b border-[var(--line)] pb-3">
+            <div>
+              <h3 class="font-display text-2xl font-bold text-[var(--ink)]">Assign Routine to Member</h3>
+              <p class="text-xs text-[var(--muted)]">${escapeHtml(w.name)}</p>
+            </div>
+            <button onclick="closeModal()" class="text-2xl text-[var(--muted)]">&times;</button>
+          </div>
+
+          <form id="form-assign-w" class="flex gap-2">
+            <select name="memberId" class="input flex-1" required>
+              <option value="">-- Choose Member --</option>
+              ${members.map(m => `<option value="${m.id}">${escapeHtml(m.fullName)} (${m.memberCode})</option>`).join('')}
+            </select>
+            <button type="submit" class="btn btn-primary btn-sm whitespace-nowrap">Assign</button>
+          </form>
+
+          <div>
+            <h4 class="text-xs font-semibold text-[var(--ink-soft)] uppercase mb-2">Assigned Members (${(w.assignedMemberIds||[]).length})</h4>
+            <div class="divide-y divide-[var(--line)] max-h-48 overflow-y-auto">
+              ${!(w.assignedMemberIds||[]).length ? '<p class="text-xs text-[var(--muted)] py-3 text-center">No members assigned yet.</p>' : (w.assignedMemberIds||[]).map(id => {
+                const m = memberById(id);
+                return `<div class="py-2 flex justify-between items-center text-xs">
+                  <span>${escapeHtml(m ? m.fullName : id)}</span>
+                  <button onclick="unassignWorkout('${w.id}', '${id}')" class="text-red-600 hover:underline">Remove</button>
+                </div>`;
+              }).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+      openModal(html);
+
+      document.getElementById('form-assign-w').addEventListener('submit', function(e){
+        e.preventDefault();
+        const mId = new FormData(this).get('memberId');
+        const all = DB.get('workouts', []);
+        const target = all.find(x => x.id === wId);
+        if (!target.assignedMemberIds) target.assignedMemberIds = [];
+        if (!target.assignedMemberIds.includes(mId)){
+          target.assignedMemberIds.push(mId);
+          DB.set('workouts', all);
+          toast('Assigned to member', 'success');
+        }
+        assignWorkoutModal(wId);
+        renderWorkouts();
+      });
+    }
+
+    function unassignWorkout(wId, mId){
+      const all = DB.get('workouts', []);
+      const target = all.find(x => x.id === wId);
+      if (!target) return;
+      target.assignedMemberIds = (target.assignedMemberIds || []).filter(id => id !== mId);
+      DB.set('workouts', all);
+      assignWorkoutModal(wId);
+      renderWorkouts();
+    }
+
+    document.getElementById('btn-add-workout').addEventListener('click', () => showWorkoutModal());
+    document.getElementById('search-workouts').addEventListener('input', renderWorkouts);
+
+    renderWorkouts();
+  </script>
+</body>
+</html>

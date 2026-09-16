@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iron & Lime — Equipment</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app-shell"></div>
+
+  <template id="equipment-tpl">
+    <div class="space-y-4">
+      <div class="card p-4 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+        <div class="flex items-center gap-2 flex-1">
+          <input id="search-eq" class="input !w-64" type="search" placeholder="Search equipment...">
+          <select id="filter-eq-cat" class="input !w-36">
+            <option value="">All Categories</option>
+            <option value="Cardio">Cardio</option>
+            <option value="Strength">Strength</option>
+            <option value="Studio">Studio</option>
+          </select>
+          <select id="filter-eq-status" class="input !w-44">
+            <option value="">All Statuses</option>
+            <option value="Available">Available</option>
+            <option value="Under Maintenance">Under Maintenance</option>
+            <option value="Damaged">Damaged</option>
+          </select>
+        </div>
+        <button id="btn-add-eq" class="btn btn-primary flex-shrink-0">+ Add Equipment</button>
+      </div>
+
+      <div class="card overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Equipment Name</th>
+                <th>Category</th>
+                <th>Status</th>
+                <th>Purchase Date</th>
+                <th>Last Service</th>
+                <th>Next Service</th>
+                <th>Notes</th>
+                <th class="text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="tbl-equipment"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <script src="js/common.js"></script>
+  <script>
+    const outlet = renderChrome('equipment', 'Gym Equipment & Assets');
+    outlet.innerHTML = document.getElementById('equipment-tpl').innerHTML;
+
+    function renderEquipment(){
+      const list = DB.get('equipment', []);
+      const search = (document.getElementById('search-eq').value || '').toLowerCase();
+      const cat = document.getElementById('filter-eq-cat').value;
+      const st = document.getElementById('filter-eq-status').value;
+
+      const filtered = list.filter(item => {
+        const matchSearch = !search || item.name.toLowerCase().includes(search);
+        const matchCat = !cat || item.category === cat;
+        const matchSt = !st || item.status === st;
+        return matchSearch && matchCat && matchSt;
+      });
+
+      const tbody = document.getElementById('tbl-equipment');
+      if (!filtered.length){
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-xs text-[var(--muted)]">No equipment records found.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(item => {
+        let badge = 'badge-success';
+        if (item.status === 'Under Maintenance') badge = 'badge-warning';
+        if (item.status === 'Damaged')           badge = 'badge-danger';
+
+        return `<tr>
+          <td>
+            <div class="font-semibold text-[var(--ink)]">${escapeHtml(item.name)}</div>
+            <div class="text-[11px] text-[var(--muted)]">${item.id}</div>
+          </td>
+          <td><span class="badge badge-muted text-[10px]">${item.category}</span></td>
+          <td><span class="badge ${badge} text-[10px]">${item.status}</span></td>
+          <td class="text-xs">${fmtDate(item.purchaseDate)}</td>
+          <td class="text-xs">${fmtDate(item.lastMaintenance)}</td>
+          <td class="text-xs font-medium">${fmtDate(item.nextMaintenance)}</td>
+          <td class="text-xs text-[var(--muted)] max-w-xs truncate">${escapeHtml(item.notes || '—')}</td>
+          <td class="text-right">
+            <button onclick="editEquipment('${item.id}')" class="btn btn-outline btn-sm text-xs">Edit</button>
+            <button onclick="deleteEquipment('${item.id}')" class="btn btn-danger btn-sm text-xs">Del</button>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    function showEquipmentModal(eqId){
+      const isEdit = Boolean(eqId);
+      const eq = isEdit ? DB.get('equipment', []).find(x => x.id === eqId) : { name:'', category:'Strength', purchaseDate:todayISO(-180), status:'Available', lastMaintenance:todayISO(-30), nextMaintenance:todayISO(60), notes:'' };
+
+      const html = `
+        <form id="form-eq" class="p-6 space-y-4">
+          <div class="flex items-center justify-between border-b border-[var(--line)] pb-3">
+            <h3 class="font-display text-2xl font-bold text-[var(--ink)]">${isEdit ? 'Edit Equipment' : 'Add Equipment'}</h3>
+            <button type="button" onclick="closeModal()" class="text-2xl text-[var(--muted)]">&times;</button>
+          </div>
+
+          <div class="grid md:grid-cols-2 gap-3">
+            <div>
+              <label class="field-label">Equipment Name *</label>
+              <input name="name" class="input" required value="${escapeHtml(eq.name)}">
+            </div>
+            <div>
+              <label class="field-label">Category</label>
+              <select name="category" class="input">
+                <option value="Strength" ${eq.category==='Strength'?'selected':''}>Strength</option>
+                <option value="Cardio" ${eq.category==='Cardio'?'selected':''}>Cardio</option>
+                <option value="Studio" ${eq.category==='Studio'?'selected':''}>Studio</option>
+                <option value="Accessory" ${eq.category==='Accessory'?'selected':''}>Accessory</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="field-label">Status</label>
+              <select name="status" class="input">
+                <option value="Available" ${eq.status==='Available'?'selected':''}>Available</option>
+                <option value="Under Maintenance" ${eq.status==='Under Maintenance'?'selected':''}>Under Maintenance</option>
+                <option value="Damaged" ${eq.status==='Damaged'?'selected':''}>Damaged</option>
+              </select>
+            </div>
+            <div>
+              <label class="field-label">Purchase Date</label>
+              <input type="date" name="purchaseDate" class="input" value="${eq.purchaseDate || ''}">
+            </div>
+
+            <div>
+              <label class="field-label">Last Maintenance Date</label>
+              <input type="date" name="lastMaintenance" class="input" value="${eq.lastMaintenance || ''}">
+            </div>
+            <div>
+              <label class="field-label">Next Scheduled Service</label>
+              <input type="date" name="nextMaintenance" class="input" value="${eq.nextMaintenance || ''}">
+            </div>
+
+            <div class="md:col-span-2">
+              <label class="field-label">Maintenance Notes / Issues</label>
+              <textarea name="notes" class="input" rows="2">${escapeHtml(eq.notes || '')}</textarea>
+            </div>
+          </div>
+
+          <div class="flex justify-end gap-2 pt-3 border-t border-[var(--line)]">
+            <button type="button" onclick="closeModal()" class="btn btn-outline">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Equipment</button>
+          </div>
+        </form>
+      `;
+      openModal(html);
+
+      document.getElementById('form-eq').addEventListener('submit', function(e){
+        e.preventDefault();
+        const fd = new FormData(this);
+        const all = DB.get('equipment', []);
+
+        if (isEdit){
+          const target = all.find(x => x.id === eqId);
+          Object.assign(target, {
+            name: fd.get('name').trim(),
+            category: fd.get('category'),
+            status: fd.get('status'),
+            purchaseDate: fd.get('purchaseDate'),
+            lastMaintenance: fd.get('lastMaintenance'),
+            nextMaintenance: fd.get('nextMaintenance'),
+            notes: fd.get('notes').trim()
+          });
+          DB.set('equipment', all);
+          toast('Equipment updated', 'success');
+        } else {
+          all.push({
+            id: uid('EQ'),
+            name: fd.get('name').trim(),
+            category: fd.get('category'),
+            status: fd.get('status'),
+            purchaseDate: fd.get('purchaseDate'),
+            lastMaintenance: fd.get('lastMaintenance'),
+            nextMaintenance: fd.get('nextMaintenance'),
+            notes: fd.get('notes').trim()
+          });
+          DB.set('equipment', all);
+          toast('Equipment registered', 'success');
+        }
+        closeModal();
+        renderEquipment();
+      });
+    }
+
+    function editEquipment(id){ showEquipmentModal(id); }
+
+    function deleteEquipment(id){
+      if (!confirm('Remove this equipment from inventory?')) return;
+      const all = DB.get('equipment', []).filter(x => x.id !== id);
+      DB.set('equipment', all);
+      toast('Equipment removed', 'success');
+      renderEquipment();
+    }
+
+    document.getElementById('btn-add-eq').addEventListener('click', () => showEquipmentModal());
+    document.getElementById('search-eq').addEventListener('input', renderEquipment);
+    document.getElementById('filter-eq-cat').addEventListener('change', renderEquipment);
+    document.getElementById('filter-eq-status').addEventListener('change', renderEquipment);
+
+    renderEquipment();
+  </script>
+</body>
+</html>

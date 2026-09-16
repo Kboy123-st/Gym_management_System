@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iron & Lime — Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app-shell"></div>
+
+  <template id="dashboard-tpl">
+    <div class="space-y-6">
+      <!-- 4 Stat Cards -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="stat-card">
+          <p class="text-xs font-semibold text-[var(--muted)]">Active Members</p>
+          <div class="flex items-baseline justify-between mt-2">
+            <span id="stat-active-members" class="stat-number">0</span>
+            <span class="badge badge-success text-[10px]">Good Standing</span>
+          </div>
+          <p class="text-[11px] text-[var(--muted)] mt-1"><span id="stat-total-members">0</span> registered total</p>
+        </div>
+
+        <div class="stat-card">
+          <p class="text-xs font-semibold text-[var(--muted)]">Today's Attendance</p>
+          <div class="flex items-baseline justify-between mt-2">
+            <span id="stat-today-attendance" class="stat-number">0</span>
+            <span class="badge badge-info text-[10px]">Check-ins</span>
+          </div>
+          <p class="text-[11px] text-[var(--muted)] mt-1">Real-time gym floor</p>
+        </div>
+
+        <div class="stat-card">
+          <p class="text-xs font-semibold text-[var(--muted)]">Monthly Revenue</p>
+          <div class="flex items-baseline justify-between mt-2">
+            <span id="stat-revenue" class="stat-number">$0</span>
+            <span class="badge badge-success text-[10px]">Current Mo.</span>
+          </div>
+          <p class="text-[11px] text-[var(--muted)] mt-1"><span id="stat-pending-invoices">0</span> unpaid invoices</p>
+        </div>
+
+        <div class="stat-card">
+          <p class="text-xs font-semibold text-[var(--muted)]">Active Trainers</p>
+          <div class="flex items-baseline justify-between mt-2">
+            <span id="stat-trainers" class="stat-number">0</span>
+            <span class="badge badge-muted text-[10px]">On Staff</span>
+          </div>
+          <p class="text-[11px] text-[var(--muted)] mt-1"><span id="stat-classes-count">0</span> weekly classes</p>
+        </div>
+      </div>
+
+      <!-- Quick Action Bar -->
+      <div class="card p-3 flex flex-wrap items-center gap-2">
+        <span class="text-xs font-semibold text-[var(--ink-soft)] px-2">Quick:</span>
+        <a href="members.html?action=new" class="btn btn-primary btn-sm">+ Member</a>
+        <a href="attendance.html" class="btn btn-outline btn-sm">Check-in</a>
+        <a href="payments.html?action=new" class="btn btn-outline btn-sm">New Payment</a>
+        <a href="classes.html" class="btn btn-outline btn-sm">Class Schedule</a>
+        <a href="assignment.html" class="btn btn-accent btn-sm ml-auto">Teacher Rubric &amp; PHP (50 Pts) &rarr;</a>
+      </div>
+
+      <!-- Charts: Revenue & Membership distribution -->
+      <div class="grid lg:grid-cols-3 gap-6">
+        <div class="card p-5 lg:col-span-2">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <h2 class="font-display text-lg font-bold text-[var(--ink)]">Monthly Revenue Trend</h2>
+              <p class="text-xs text-[var(--muted)]">Last 6 months collected fees</p>
+            </div>
+          </div>
+          <div class="h-64"><canvas id="chart-revenue"></canvas></div>
+        </div>
+
+        <div class="card p-5">
+          <h2 class="font-display text-lg font-bold text-[var(--ink)] mb-1">Members by Plan</h2>
+          <p class="text-xs text-[var(--muted)] mb-3">Active contracts breakdown</p>
+          <div class="h-64 flex items-center justify-center"><canvas id="chart-plans"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Bottom split: Recent check-ins & Expiring soon -->
+      <div class="grid lg:grid-cols-2 gap-6">
+        <div class="card p-5">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="font-display text-lg font-bold text-[var(--ink)]">Recent Check-ins</h2>
+            <a href="attendance.html" class="text-xs text-[var(--teal-700)] font-semibold hover:underline">View all &rarr;</a>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="data-table">
+              <thead><tr><th>Member</th><th>Time</th><th>Method</th></tr></thead>
+              <tbody id="tbl-recent-checkins"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card p-5">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="font-display text-lg font-bold text-[var(--ink)]">Memberships Expiring Soon</h2>
+            <a href="memberships.html" class="text-xs text-[var(--teal-700)] font-semibold hover:underline">Manage &rarr;</a>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="data-table">
+              <thead><tr><th>Member</th><th>Plan</th><th>Expires</th><th>Status</th></tr></thead>
+              <tbody id="tbl-expiring"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <script src="js/common.js"></script>
+  <script>
+    refreshMembershipStatuses();
+    const outlet = renderChrome('dashboard', 'Dashboard');
+    outlet.innerHTML = document.getElementById('dashboard-tpl').innerHTML;
+
+    const members = DB.get('members', []);
+    const memberships = DB.get('memberships', []);
+    const attendance = DB.get('attendance', []);
+    const payments = DB.get('payments', []);
+    const trainers = DB.get('trainers', []);
+    const plans = DB.get('plans', []);
+    const classes = DB.get('classes', []);
+
+    // Stats
+    const activeMemberships = memberships.filter(m => m.status === 'Active');
+    document.getElementById('stat-active-members').textContent = activeMemberships.length;
+    document.getElementById('stat-total-members').textContent = members.length;
+
+    const todayAtt = attendance.filter(a => a.date === todayISO());
+    document.getElementById('stat-today-attendance').textContent = todayAtt.length;
+
+    const thisMonth = todayISO().slice(0,7);
+    const monthRev = payments.filter(p => p.date.startsWith(thisMonth) && p.status === 'Paid')
+                             .reduce((s,p) => s + (p.amount - (p.discount||0)), 0);
+    document.getElementById('stat-revenue').textContent = fmtMoney(monthRev);
+    document.getElementById('stat-pending-invoices').textContent = payments.filter(p => p.status === 'Pending').length;
+
+    document.getElementById('stat-trainers').textContent = trainers.filter(t => t.status === 'Active').length;
+    document.getElementById('stat-classes-count').textContent = classes.length;
+
+    // Recent check-ins
+    const sortedAtt = [...attendance].sort((a,b) => (b.date + ' ' + b.checkIn).localeCompare(a.date + ' ' + a.checkIn)).slice(0, 5);
+    const tCheckins = document.getElementById('tbl-recent-checkins');
+    if (!sortedAtt.length){
+      tCheckins.innerHTML = '<tr><td colspan="3" class="text-center text-xs text-[var(--muted)] py-4">No attendance recorded today.</td></tr>';
+    } else {
+      tCheckins.innerHTML = sortedAtt.map(a => {
+        const m = memberById(a.memberId);
+        return `<tr>
+          <td><div class="font-medium text-[var(--ink)]">${escapeHtml(m ? m.fullName : 'Unknown')}</div><div class="text-[11px] text-[var(--muted)]">${m ? m.memberCode : ''}</div></td>
+          <td class="text-xs">${a.checkIn} ${a.checkOut ? '→ ' + a.checkOut : '<span class="text-green-600 font-semibold">• Active</span>'}</td>
+          <td><span class="badge ${a.method==='QR Code' ? 'badge-info' : 'badge-muted'} text-[10px]">${a.method}</span></td>
+        </tr>`;
+      }).join('');
+    }
+
+    // Expiring soon (within next 14 days or already expired within last 3)
+    const expiring = memberships.filter(ms => {
+      const left = daysUntil(ms.endDate);
+      return (left <= 14 && left >= -3);
+    }).slice(0, 5);
+
+    const tExpiring = document.getElementById('tbl-expiring');
+    if (!expiring.length){
+      tExpiring.innerHTML = '<tr><td colspan="4" class="text-center text-xs text-[var(--muted)] py-4">No memberships expiring within 14 days.</td></tr>';
+    } else {
+      tExpiring.innerHTML = expiring.map(ms => {
+        const m = memberById(ms.memberId);
+        const p = planById(ms.planId);
+        const left = daysUntil(ms.endDate);
+        let badge = 'badge-warning';
+        let label = left < 0 ? 'Expired' : (left === 0 ? 'Today' : left + 'd left');
+        if (left < 0) badge = 'badge-danger';
+        return `<tr>
+          <td><div class="font-medium text-[var(--ink)]">${escapeHtml(m ? m.fullName : 'Unknown')}</div></td>
+          <td class="text-xs">${escapeHtml(p ? p.name : '—')}</td>
+          <td class="text-xs">${fmtDate(ms.endDate)}</td>
+          <td><span class="badge ${badge} text-[10px]">${label}</span></td>
+        </tr>`;
+      }).join('');
+    }
+
+    // Revenue chart (6 months)
+    const months = [];
+    for (let i = 5; i >= 0; i--){
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      months.push(d.toISOString().slice(0,7));
+    }
+    const revData = months.map(m => {
+      return payments.filter(p => p.date.startsWith(m) && p.status === 'Paid')
+                     .reduce((s,p) => s + (p.amount - (p.discount||0)), 0);
+    });
+    const revLabels = months.map(m => {
+      const d = new Date(m + '-01T00:00:00');
+      return d.toLocaleDateString(undefined, {month:'short'});
+    });
+
+    new Chart(document.getElementById('chart-revenue'), {
+      type: 'bar',
+      data: {
+        labels: revLabels,
+        datasets: [{
+          label: 'Revenue ($)',
+          data: revData,
+          backgroundColor: '#0E2B27',
+          borderRadius: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display:false } },
+        scales: {
+          y: { grid:{ color:'#EEF1EF' }, ticks:{ callback: v => '$' + v } },
+          x: { grid:{ display:false } }
+        }
+      }
+    });
+
+    // Plans distribution
+    const planCounts = plans.map(p => {
+      return memberships.filter(m => m.planId === p.id && m.status === 'Active').length;
+    });
+
+    new Chart(document.getElementById('chart-plans'), {
+      type: 'doughnut',
+      data: {
+        labels: plans.map(p => p.name),
+        datasets: [{
+          data: planCounts,
+          backgroundColor: ['#0E2B27', '#17544C', '#2F9E5B', '#CFFF3D', '#C9891A', '#2E7DB8']
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position:'bottom', labels:{ boxWidth:10, font:{size:11} } } }
+      }
+    });
+  </script>
+</body>
+</html>

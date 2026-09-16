@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iron & Lime — Notifications</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app-shell"></div>
+
+  <template id="notifications-tpl">
+    <div class="space-y-4 max-w-3xl">
+      <div class="card p-4 flex justify-between items-center">
+        <div>
+          <h2 class="font-display text-xl font-bold text-[var(--ink)]">System Alerts &amp; Notifications</h2>
+          <p class="text-xs text-[var(--muted)]">Automatic expiry alerts, overdue invoices, and maintenance flags</p>
+        </div>
+        <button onclick="refreshAlerts()" class="btn btn-outline btn-sm">Refresh Alerts</button>
+      </div>
+
+      <div id="alerts-list" class="space-y-3"></div>
+    </div>
+  </template>
+
+  <script src="js/common.js"></script>
+  <script>
+    const outlet = renderChrome('notifications', 'Notifications Center');
+    outlet.innerHTML = document.getElementById('notifications-tpl').innerHTML;
+
+    function refreshAlerts(){
+      refreshMembershipStatuses();
+      const memberships = DB.get('memberships', []);
+      const payments = DB.get('payments', []);
+      const equipment = DB.get('equipment', []);
+      const members = DB.get('members', []);
+
+      const alerts = [];
+
+      // Expired or expiring memberships
+      memberships.forEach(ms => {
+        const m = memberById(ms.memberId);
+        const days = daysUntil(ms.endDate);
+        if (days < 0 && ms.status === 'Expired'){
+          alerts.push({
+            type: 'danger',
+            title: `Membership Expired: ${m ? m.fullName : 'Member'}`,
+            desc: `Plan expired on ${fmtDate(ms.endDate)}. Reach out for renewal.`,
+            link: `memberships.html?memberId=${ms.memberId}`,
+            action: 'Renew Now'
+          });
+        } else if (days >= 0 && days <= 5 && ms.status === 'Active'){
+          alerts.push({
+            type: 'warning',
+            title: `Expiring Soon: ${m ? m.fullName : 'Member'}`,
+            desc: `Membership will end in ${days} day(s) on ${fmtDate(ms.endDate)}.`,
+            link: `memberships.html?memberId=${ms.memberId}`,
+            action: 'Send Reminder'
+          });
+        }
+      });
+
+      // Pending invoices
+      payments.filter(p => p.status === 'Pending').forEach(p => {
+        const m = memberById(p.memberId);
+        alerts.push({
+          type: 'warning',
+          title: `Unpaid Invoice: ${p.invoiceNo}`,
+          desc: `${fmtMoney(p.amount)} pending for ${m ? m.fullName : 'Member'} since ${fmtDate(p.date)}.`,
+          link: 'payments.html',
+          action: 'Collect Fee'
+        });
+      });
+
+      // Equipment issues
+      equipment.filter(eq => eq.status !== 'Available').forEach(eq => {
+        alerts.push({
+          type: eq.status==='Damaged' ? 'danger' : 'info',
+          title: `Equipment Alert: ${eq.name} (${eq.status})`,
+          desc: eq.notes || `Scheduled for maintenance by ${fmtDate(eq.nextMaintenance)}.`,
+          link: 'equipment.html',
+          action: 'View Equipment'
+        });
+      });
+
+      const host = document.getElementById('alerts-list');
+      if (!alerts.length){
+        host.innerHTML = '<div class="card p-8 text-center text-xs text-green-700 bg-green-50 border-green-200">✓ All clear! No active system alerts at this moment.</div>';
+        return;
+      }
+
+      host.innerHTML = alerts.map(a => {
+        let border = 'border-l-4 border-amber-500';
+        let badge = '<span class="badge badge-warning text-[10px]">Action Required</span>';
+        if (a.type === 'danger'){
+          border = 'border-l-4 border-red-500';
+          badge = '<span class="badge badge-danger text-[10px]">Urgent</span>';
+        } else if (a.type === 'info'){
+          border = 'border-l-4 border-blue-500';
+          badge = '<span class="badge badge-info text-[10px]">Maintenance</span>';
+        }
+
+        return `
+          <div class="card p-4 ${border} flex items-center justify-between gap-4">
+            <div>
+              <div class="flex items-center gap-2">
+                ${badge}
+                <h4 class="font-bold text-sm text-[var(--ink)]">${escapeHtml(a.title)}</h4>
+              </div>
+              <p class="text-xs text-[var(--muted)] mt-1">${escapeHtml(a.desc)}</p>
+            </div>
+            <a href="${a.link}" class="btn btn-outline btn-sm text-xs whitespace-nowrap flex-shrink-0">${a.action} &rarr;</a>
+          </div>
+        `;
+      }).join('');
+    }
+
+    refreshAlerts();
+  </script>
+</body>
+</html>

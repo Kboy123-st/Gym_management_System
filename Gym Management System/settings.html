@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iron & Lime — Settings</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app-shell"></div>
+
+  <template id="settings-tpl">
+    <div class="space-y-6 max-w-3xl">
+      <!-- Gym details -->
+      <form id="form-settings" class="card p-6 space-y-4">
+        <div class="border-b border-[var(--line)] pb-3">
+          <h2 class="font-display text-xl font-bold text-[var(--ink)]">Gym Information</h2>
+          <p class="text-xs text-[var(--muted)]">Business credentials printed on receipts and invoices</p>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-3">
+          <div>
+            <label class="field-label">Gym Name</label>
+            <input name="gymName" id="set-name" class="input" required>
+          </div>
+          <div>
+            <label class="field-label">Phone Number</label>
+            <input name="phone" id="set-phone" class="input" required>
+          </div>
+          <div class="md:col-span-2">
+            <label class="field-label">Address</label>
+            <input name="address" id="set-address" class="input" required>
+          </div>
+          <div>
+            <label class="field-label">Email</label>
+            <input name="email" id="set-email" class="input" required>
+          </div>
+          <div>
+            <label class="field-label">Base Currency</label>
+            <select name="currency" id="set-currency" class="input">
+              <option value="USD">USD ($)</option>
+              <option value="KHR">KHR (៛)</option>
+              <option value="THB">THB (฿)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="flex justify-end pt-3 border-t border-[var(--line)]">
+          <button type="submit" class="btn btn-primary">Save Settings</button>
+        </div>
+      </form>
+
+      <!-- System Backup & Reset -->
+      <div class="card p-6 space-y-4">
+        <div class="border-b border-[var(--line)] pb-3">
+          <h2 class="font-display text-xl font-bold text-[var(--ink)]">Database &amp; Backup Operations</h2>
+          <p class="text-xs text-[var(--muted)]">Export system state JSON or restore sample dataset</p>
+        </div>
+
+        <div class="flex flex-wrap gap-3">
+          <button onclick="exportData()" class="btn btn-outline">📥 Export JSON Backup</button>
+          <button onclick="resetData()" class="btn btn-danger">⚠️ Reset to Initial Seed Data</button>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <script src="js/common.js"></script>
+  <script>
+    const outlet = renderChrome('settings', 'System Settings');
+    outlet.innerHTML = document.getElementById('settings-tpl').innerHTML;
+
+    const s = DB.get('settings', {});
+    document.getElementById('set-name').value = s.gymName || '';
+    document.getElementById('set-phone').value = s.phone || '';
+    document.getElementById('set-address').value = s.address || '';
+    document.getElementById('set-email').value = s.email || '';
+    document.getElementById('set-currency').value = s.currency || 'USD';
+
+    document.getElementById('form-settings').addEventListener('submit', function(e){
+      e.preventDefault();
+      const current = DB.get('settings', {});
+      current.gymName = document.getElementById('set-name').value.trim();
+      current.phone = document.getElementById('set-phone').value.trim();
+      current.address = document.getElementById('set-address').value.trim();
+      current.email = document.getElementById('set-email').value.trim();
+      current.currency = document.getElementById('set-currency').value;
+      DB.set('settings', current);
+      toast('Settings updated successfully', 'success');
+    });
+
+    function exportData(){
+      const dump = {};
+      for (let i=0; i<localStorage.length; i++){
+        const k = localStorage.key(i);
+        if (k.startsWith('gms_')) dump[k] = localStorage.getItem(k);
+      }
+      const blob = new Blob([JSON.stringify(dump, null, 2)], { type:'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'iron-and-lime-backup-' + todayISO() + '.json';
+      a.click();
+      toast('Backup file downloaded', 'success');
+    }
+
+    function resetData(){
+      if (!confirm('This will wipe all custom records and reload original seed data. Continue?')) return;
+      const keys = [];
+      for (let i=0; i<localStorage.length; i++){
+        const k = localStorage.key(i);
+        if (k.startsWith('gms_')) keys.push(k);
+      }
+      keys.forEach(k => localStorage.removeItem(k));
+      window.location.reload();
+    }
+  </script>
+</body>
+</html>

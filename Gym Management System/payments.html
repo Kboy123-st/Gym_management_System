@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iron & Lime — Payments</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app-shell"></div>
+
+  <template id="payments-tpl">
+    <div class="space-y-4">
+      <!-- Toolbar -->
+      <div class="card p-4 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+        <div class="flex items-center gap-2 flex-1">
+          <input id="search-pmt" class="input !w-64" type="search" placeholder="Search invoice, member...">
+          <select id="filter-pmt-status" class="input !w-36">
+            <option value="">All Statuses</option>
+            <option value="Paid">Paid</option>
+            <option value="Pending">Pending</option>
+          </select>
+          <select id="filter-pmt-method" class="input !w-44">
+            <option value="">All Methods</option>
+            <option value="Cash">Cash</option>
+            <option value="Credit Card">Credit Card</option>
+            <option value="Bank Transfer">Bank Transfer</option>
+            <option value="Mobile Payment">Mobile Payment</option>
+          </select>
+        </div>
+        <button id="btn-add-pmt" class="btn btn-primary flex-shrink-0">+ New Payment / Invoice</button>
+      </div>
+
+      <!-- Invoices table -->
+      <div class="card overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Invoice #</th>
+                <th>Member</th>
+                <th>Payment Date</th>
+                <th>Method</th>
+                <th>Subtotal</th>
+                <th>Discount</th>
+                <th>Total Paid</th>
+                <th>Status</th>
+                <th class="text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="tbl-payments"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <script src="js/common.js"></script>
+  <script>
+    const outlet = renderChrome('payments', 'Invoicing & Payments');
+    outlet.innerHTML = document.getElementById('payments-tpl').innerHTML;
+
+    function renderPayments(){
+      const list = DB.get('payments', []);
+      const search = (document.getElementById('search-pmt').value || '').toLowerCase();
+      const st = document.getElementById('filter-pmt-status').value;
+      const meth = document.getElementById('filter-pmt-method').value;
+
+      const filtered = list.filter(p => {
+        const m = memberById(p.memberId);
+        const mName = m ? m.fullName.toLowerCase() : '';
+        const matchSearch = !search || p.invoiceNo.toLowerCase().includes(search) || mName.includes(search);
+        const matchSt = !st || p.status === st;
+        const matchMeth = !meth || p.method === meth;
+        return matchSearch && matchSt && matchMeth;
+      });
+
+      const tbody = document.getElementById('tbl-payments');
+      if (!filtered.length){
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center py-8 text-xs text-[var(--muted)]">No payments found.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(p => {
+        const m = memberById(p.memberId);
+        const finalAmount = Math.max(0, p.amount - (p.discount || 0));
+
+        let badge = p.status === 'Paid' ? 'badge-success' : 'badge-warning';
+
+        return `<tr>
+          <td class="font-mono font-bold text-xs text-[var(--teal-950)]">${p.invoiceNo}</td>
+          <td>
+            <div class="font-semibold text-[var(--ink)]">${escapeHtml(m ? m.fullName : 'Unknown')}</div>
+            <div class="text-[11px] text-[var(--muted)]">${m ? m.memberCode : ''}</div>
+          </td>
+          <td class="text-xs">${fmtDate(p.date)}</td>
+          <td><span class="badge badge-muted text-[10px]">${p.method}</span></td>
+          <td class="text-xs font-mono">${fmtMoney(p.amount)}</td>
+          <td class="text-xs font-mono text-red-600">${p.discount ? '-' + fmtMoney(p.discount) : '—'}</td>
+          <td class="text-xs font-mono font-bold text-[var(--ink)]">${fmtMoney(finalAmount)}</td>
+          <td><span class="badge ${badge} text-[10px]">${p.status}</span></td>
+          <td class="text-right">
+            <button onclick="printReceiptModal('${p.id}')" class="btn btn-outline btn-sm text-xs">Receipt</button>
+            ${p.status==='Pending' ? `<button onclick="markAsPaid('${p.id}')" class="btn btn-primary btn-sm text-xs">Mark Paid</button>` : ''}
+            <button onclick="deletePayment('${p.id}')" class="btn btn-danger btn-sm text-xs">Del</button>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    function showPaymentModal(preMemberId){
+      const members = DB.get('members', []);
+      const plans = DB.get('plans', []);
+
+      const html = `
+        <form id="form-pmt" class="p-6 space-y-4">
+          <div class="flex items-center justify-between border-b border-[var(--line)] pb-3">
+            <h3 class="font-display text-2xl font-bold text-[var(--ink)]">Record Payment</h3>
+            <button type="button" onclick="closeModal()" class="text-2xl text-[var(--muted)]">&times;</button>
+          </div>
+
+          <div>
+            <label class="field-label">Member *</label>
+            <select name="memberId" class="input" required>
+              <option value="">-- Choose Member --</option>
+              ${members.map(m => `<option value="${m.id}" ${preMemberId===m.id?'selected':''}>${escapeHtml(m.fullName)} (${m.memberCode})</option>`).join('')}
+            </select>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="field-label">Amount (USD) *</label>
+              <input type="number" step="0.01" name="amount" id="pmt-amount" class="input" required value="45.00">
+            </div>
+            <div>
+              <label class="field-label">Discount (USD)</label>
+              <input type="number" step="0.01" name="discount" id="pmt-discount" class="input" value="0.00">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="field-label">Payment Method</label>
+              <select name="method" class="input">
+                <option value="Cash">Cash</option>
+                <option value="Credit Card">Credit Card</option>
+                <option value="Bank Transfer">Bank Transfer</option>
+                <option value="Mobile Payment">Mobile Payment (ABA/Wing)</option>
+              </select>
+            </div>
+            <div>
+              <label class="field-label">Payment Date</label>
+              <input type="date" name="date" class="input" required value="${todayISO()}">
+            </div>
+          </div>
+
+          <div>
+            <label class="field-label">Payment Status</label>
+            <select name="status" class="input">
+              <option value="Paid">Paid</option>
+              <option value="Pending">Pending</option>
+            </select>
+          </div>
+
+          <div class="flex justify-end gap-2 pt-3 border-t border-[var(--line)]">
+            <button type="button" onclick="closeModal()" class="btn btn-outline">Cancel</button>
+            <button type="submit" class="btn btn-primary">Generate Invoice</button>
+          </div>
+        </form>
+      `;
+      openModal(html);
+
+      document.getElementById('form-pmt').addEventListener('submit', function(e){
+        e.preventDefault();
+        const fd = new FormData(this);
+        const all = DB.get('payments', []);
+
+        all.unshift({
+          id: uid('PMT'),
+          invoiceNo: 'INV-' + (4000 + all.length + 1),
+          memberId: fd.get('memberId'),
+          amount: parseFloat(fd.get('amount')),
+          discount: parseFloat(fd.get('discount') || 0),
+          method: fd.get('method'),
+          date: fd.get('date'),
+          status: fd.get('status')
+        });
+
+        DB.set('payments', all);
+        toast('Invoice created', 'success');
+        closeModal();
+        renderPayments();
+      });
+    }
+
+    function markAsPaid(id){
+      const all = DB.get('payments', []);
+      const p = all.find(x => x.id === id);
+      if (!p) return;
+      p.status = 'Paid';
+      DB.set('payments', all);
+      toast('Invoice marked as Paid', 'success');
+      renderPayments();
+    }
+
+    function deletePayment(id){
+      if (!confirm('Delete this payment invoice?')) return;
+      const all = DB.get('payments', []).filter(x => x.id !== id);
+      DB.set('payments', all);
+      renderPayments();
+    }
+
+    // Print Receipt Modal
+    function printReceiptModal(id){
+      const p = DB.get('payments', []).find(x => x.id === id);
+      if (!p) return;
+      const m = memberById(p.memberId);
+      const s = DB.get('settings', {});
+      const net = Math.max(0, p.amount - (p.discount||0));
+
+      const html = `
+        <div class="p-6 space-y-4" id="printable-receipt">
+          <div class="flex justify-between items-start border-b border-[var(--line)] pb-4">
+            <div>
+              <h2 class="font-display text-2xl font-bold text-[var(--teal-950)]">${escapeHtml(s.gymName || 'Iron & Lime')}</h2>
+              <p class="text-xs text-[var(--muted)]">${escapeHtml(s.address || '88 Riverside Ave')}</p>
+              <p class="text-xs text-[var(--muted)]">${escapeHtml(s.phone || '')}</p>
+            </div>
+            <div class="text-right">
+              <span class="badge ${p.status==='Paid'?'badge-success':'badge-warning'} uppercase text-[10px]">${p.status}</span>
+              <p class="font-mono text-xs font-bold mt-1">${p.invoiceNo}</p>
+              <p class="text-[11px] text-[var(--muted)]">${fmtDate(p.date)}</p>
+            </div>
+          </div>
+
+          <div class="text-xs space-y-1">
+            <div><span class="text-[var(--muted)]">Billed To:</span> <strong>${escapeHtml(m ? m.fullName : 'Guest')}</strong> (${m ? m.memberCode : ''})</div>
+            <div><span class="text-[var(--muted)]">Phone:</span> ${m ? m.phone : '—'}</div>
+            <div><span class="text-[var(--muted)]">Payment Method:</span> ${p.method}</div>
+          </div>
+
+          <table class="w-full text-xs border-y border-[var(--line)] py-2 my-2">
+            <thead>
+              <tr class="text-left text-[var(--muted)] border-b border-gray-100">
+                <th class="py-1">Description</th>
+                <th class="text-right py-1">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="py-2">Gym Access / Membership Fee</td>
+                <td class="text-right font-mono py-2">${fmtMoney(p.amount)}</td>
+              </tr>
+              ${p.discount ? `
+                <tr class="text-red-600">
+                  <td class="py-1">Promotional Discount</td>
+                  <td class="text-right font-mono py-1">-${fmtMoney(p.discount)}</td>
+                </tr>
+              ` : ''}
+              <tr class="font-bold text-sm border-t border-[var(--line)]">
+                <td class="pt-2">Total Amount</td>
+                <td class="text-right font-mono pt-2 text-[var(--teal-950)]">${fmtMoney(net)}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="text-center text-[10px] text-[var(--muted)] pt-2">
+            Thank you for training with Iron &amp; Lime! Keep pushing.
+          </div>
+
+          <div class="flex justify-end gap-2 pt-2 border-t border-[var(--line)]">
+            <button onclick="closeModal()" class="btn btn-outline btn-sm">Close</button>
+            <button onclick="window.print()" class="btn btn-primary btn-sm">Print Receipt</button>
+          </div>
+        </div>
+      `;
+      openModal(html, { width:'max-w-md' });
+    }
+
+    document.getElementById('btn-add-pmt').addEventListener('click', () => showPaymentModal());
+    document.getElementById('search-pmt').addEventListener('input', renderPayments);
+    document.getElementById('filter-pmt-status').addEventListener('change', renderPayments);
+    document.getElementById('filter-pmt-method').addEventListener('change', renderPayments);
+
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('action') === 'new') showPaymentModal(urlParams.get('memberId'));
+
+    renderPayments();
+  </script>
+</body>
+</html>
