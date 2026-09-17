@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GymBook — The Workout & Gym Booking App</title>
+  <!-- Google Fonts for sleek Apple-like aesthetic -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  
+  <style>
+    /* ============================================================
+       GymBook Aesthetic: Dark mode, neon citrus accents, iOS card styling
+       Clean, modern, interactive, beginner-approachable code
+       ============================================================ */
+    :root {
+      --bg-dark: #0A0D0C;
+      --bg-surface: #141A18;
+      --bg-card: #1B2421;
+      --bg-card-hover: #222D29;
+      --border: #26332E;
+      --border-light: #32443D;
+      --accent: #00E676; /* GymBook signature vibrant green */
+      --accent-glow: rgba(0, 230, 118, 0.2);
+      --accent-orange: #FF9100;
+      --text-main: #FFFFFF;
+      --text-muted: #8E9F98;
+      --danger: #FF5252;
+      --radius-lg: 18px;
+      --radius-md: 12px;
+      --radius-sm: 8px;
+      --font-main: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: var(--font-main);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top Navigation */
+    header {
+      background-color: rgba(20, 26, 24, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      padding: 14px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: var(--text-main);
+    }
+
+    .brand-icon {
+      width: 38px;
+      height: 38px;
+      background: linear-gradient(135deg, #00E676 0%, #00B0FF 100%);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 20px;
+      color: #0A0D0C;
+      box-shadow: 0 4px 12px var(--accent-glow);
+    }
+
+    .brand-name {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+
+    .brand-tag {
+      font-size: 10px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      color: var(--accent);
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-left: 6px;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+    }
+
+    .nav-link {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 600;
+      transition: color 0.2s;
+    }
+
+    .nav-link:hover, .nav-link.active {
+      color: var(--accent);
+    }
+
+    .btn-portal {
+      background: var(--bg-card);
+      color: var(--text-main);
+      border: 1px solid var(--border-light);
+      padding: 8px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .btn-portal:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* Main Layout */
+    .app-layout {
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 30px 20px 60px 20px;
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 30px;
+    }
+
+    @media (max-width: 900px) {
+      .app-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Left Column: Hero & Class Selector */
+    .hero-banner {
+      background: radial-gradient(circle at 100% 0%, rgba(0, 230, 118, 0.12) 0%, transparent 60%), var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      margin-bottom: 24px;
+    }
+
+    .badge-live {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--accent);
+      background: rgba(0, 230, 118, 0.12);
+      border: 1px solid rgba(0, 230, 118, 0.25);
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .badge-dot {
+      width: 6px;
+      height: 6px;
+      background-color: var(--accent);
+      border-radius: 50%;
+      animation: pulse 1.8s infinite;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 0.4; }
+      50% { opacity: 1; }
+      100% { opacity: 0.4; }
+    }
+
+    .hero-title {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.8px;
+      line-height: 1.25;
+      margin-bottom: 10px;
+    }
+
+    .hero-desc {
+      color: var(--text-muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    /* Filters Bar */
+    .filters-bar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 18px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
+    .filter-chip {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+
+    .filter-chip:hover {
+      border-color: var(--accent);
+      color: var(--text-main);
+    }
+
+    .filter-chip.active {
+      background: var(--accent);
+      color: #0A0D0C;
+      border-color: var(--accent);
+      font-weight: 700;
+    }
+
+    /* Class Cards List */
+    .cards-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .gymbook-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 18px 20px;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 16px;
+      align-items: center;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .gymbook-card:hover {
+      border-color: var(--accent);
+      background: var(--bg-card-hover);
+      transform: translateY(-2px);
+    }
+
+    .gymbook-card.selected {
+      border-color: var(--accent);
+      background: rgba(0, 230, 118, 0.08);
+      box-shadow: 0 0 0 1px var(--accent), 0 8px 20px rgba(0,0,0,0.3);
+    }
+
+    .gymbook-card.selected::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background: var(--accent);
+    }
+
+    .muscle-badge {
+      width: 52px;
+      height: 52px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      font-size: 22px;
+    }
+
+    .class-primary {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .class-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .class-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .target-pill {
+      font-size: 10px;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: var(--bg-card);
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .class-meta {
+      font-size: 13px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .meta-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .class-action {
+      text-align: right;
+    }
+
+    .spots-text {
+      font-size: 12px;
+      color: var(--accent);
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .spots-text.low {
+      color: var(--accent-orange);
+    }
+
+    .btn-select-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      color: var(--text-main);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .gymbook-card.selected .btn-select-card {
+      background: var(--accent);
+      color: #0A0D0C;
+      border-color: var(--accent);
+    }
+
+    /* Right Column: Interactive Booking Matrix Form & Active Pass */
+    .right-column {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .booking-sheet {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      position: sticky;
+      top: 90px;
+    }
+
+    .sheet-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .sheet-subtitle {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+    }
+
+    .active-selection-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .sel-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+
+    .sel-value {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .sel-time {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    /* Form Fields */
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .field-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .field-input {
+      width: 100%;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      color: var(--text-main);
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .field-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent-glow);
+    }
+
+    .field-input::placeholder {
+      color: #52635B;
+    }
+
+    /* Workout Intensity / Rest Picker inspired by GymBook */
+    .intensity-picker {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .intensity-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 8px;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 700;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .intensity-btn:hover {
+      border-color: var(--accent);
+      color: var(--text-main);
+    }
+
+    .intensity-btn.active {
+      background: rgba(0, 230, 118, 0.12);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* Primary Submit Button */
+    .btn-gymbook-confirm {
+      width: 100%;
+      background: var(--accent);
+      color: #0A0D0C;
+      border: none;
+      border-radius: var(--radius-md);
+      padding: 14px;
+      font-size: 15px;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 4px 16px var(--accent-glow);
+      transition: transform 0.15s, background-color 0.2s;
+      margin-top: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-gymbook-confirm:hover {
+      background: #1aff85;
+      transform: translateY(-1px);
+    }
+
+    .btn-gymbook-confirm:active {
+      transform: translateY(1px);
+    }
+
+    /* Confirmation Modal / Toast */
+    .toast-popup {
+      display: none;
+      background: var(--bg-card);
+      border: 1px solid var(--accent);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      margin-bottom: 20px;
+      box-shadow: 0 8px 24px rgba(0, 230, 118, 0.15);
+      animation: slideDown 0.3s ease;
+    }
+
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .toast-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 4px;
+    }
+
+    .toast-body {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    /* My Bookings Matrix */
+    .my-bookings-section {
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 0 20px 60px 20px;
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+
+    .section-headline {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+
+    .bookings-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .booking-pass-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      position: relative;
+    }
+
+    .booking-pass-card::after {
+      content: 'CONFIRMED PASS';
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      font-size: 9px;
+      font-weight: 800;
+      font-family: var(--font-mono);
+      background: rgba(0, 230, 118, 0.1);
+      color: var(--accent);
+      padding: 2px 6px;
+      border-radius: 4px;
+      letter-spacing: 0.5px;
+    }
+
+    .pass-name {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .pass-details {
+      font-size: 13px;
+      color: var(--text-muted);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .pass-date {
+      color: var(--accent);
+      font-family: var(--font-mono);
+      font-weight: 700;
+      font-size: 12px;
+    }
+
+    .pass-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+      margin-top: 4px;
+    }
+
+    .btn-cancel-pass {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--danger);
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .btn-cancel-pass:hover {
+      background: rgba(255, 82, 82, 0.1);
+      border-color: var(--danger);
+    }
+
+    /* Footer */
+    footer {
+      background: var(--bg-surface);
+      border-top: 1px solid var(--border);
+      padding: 24px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+      margin-top: auto;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Header -->
+  <header>
+    <a href="booking.html" class="brand">
+      <div class="brand-icon">&#x26A1;</div>
+      <div class="brand-name">GymBook</div>
+      <span class="brand-tag">Class Booking</span>
+    </a>
+
+    <nav class="nav-links">
+      <a href="#schedule" class="nav-link active">Classes</a>
+      <a href="#passes" class="nav-link">My Passes</a>
+      <a href="dashboard.html" class="btn-portal">Staff Dashboard &rarr;</a>
+    </nav>
+  </header>
+
+  <!-- Main 2-Column App Grid -->
+  <div class="app-layout">
+
+    <!-- Left Column: Workout Routine & Class Catalog -->
+    <div class="left-column" id="schedule">
+
+      <div class="hero-banner">
+        <div class="badge-live">
+          <span class="badge-dot"></span>
+          <span>LIVE GYM SCHEDULE &bull; SIEM REAP</span>
+        </div>
+        <h1 class="hero-title">Book your workout.<br>Track your strength.</h1>
+        <p class="hero-desc">
+          Inspired by GymBook's minimalist fitness experience. Choose your session, reserve your station, and train with certified coaches.
+        </p>
+      </div>
+
+      <!-- Category Filter Chips -->
+      <div class="filters-bar" id="filter-container">
+        <button class="filter-chip active" onclick="filterClasses('All')">All Workouts</button>
+        <button class="filter-chip" onclick="filterClasses('Strength')">Strength &amp; HIIT</button>
+        <button class="filter-chip" onclick="filterClasses('Yoga')">Yoga &amp; Mobility</button>
+        <button class="filter-chip" onclick="filterClasses('Cardio')">Cardio &amp; Spin</button>
+        <button class="filter-chip" onclick="filterClasses('Dance')">Dance &amp; Zumba</button>
+      </div>
+
+      <!-- Cards Container -->
+      <div class="cards-stack" id="classes-list">
+        <!-- Rendered by simple JavaScript -->
+      </div>
+
+    </div>
+
+    <!-- Right Column: Booking Matrix Sheet -->
+    <div class="right-column">
+
+      <div class="booking-sheet" id="booking-sheet">
+        <h2 class="sheet-title">Reserve Station</h2>
+        <p class="sheet-subtitle">Instant registration &bull; No membership required</p>
+
+        <!-- Dynamic Success Toast -->
+        <div class="toast-popup" id="booking-toast">
+          <div class="toast-title">&#x2714; Booking Confirmed!</div>
+          <div class="toast-body" id="toast-message">Your workout spot is reserved. See your pass below.</div>
+        </div>
+
+        <form id="booking-form" onsubmit="submitGymBook(event)">
+          <!-- Hidden Selected ID -->
+          <input type="hidden" id="input-class-id" required>
+
+          <!-- Selected Class Preview Box -->
+          <div class="active-selection-box">
+            <div>
+              <div class="sel-label">Selected Routine</div>
+              <div class="sel-value" id="disp-class-name">Sunrise Yoga</div>
+            </div>
+            <div style="text-align: right;">
+              <div class="sel-label">Schedule</div>
+              <div class="sel-time" id="disp-class-time">06:30 AM &bull; Mon/Wed/Fri</div>
+            </div>
+          </div>
+
+          <!-- Full Name -->
+          <div class="form-group">
+            <label class="field-label" for="user-name">Full Name</label>
+            <input type="text" id="user-name" class="field-input" placeholder="e.g. Alex Henderson" required>
+          </div>
+
+          <!-- Phone Number -->
+          <div class="form-group">
+            <label class="field-label" for="user-phone">Phone Number (WhatsApp / Telegram)</label>
+            <input type="tel" id="user-phone" class="field-input" placeholder="e.g. +855 12 345 678" required>
+          </div>
+
+          <!-- Session Date -->
+          <div class="form-group">
+            <label class="field-label" for="user-date">Date of Session</label>
+            <input type="date" id="user-date" class="field-input" required>
+          </div>
+
+          <!-- Goal / Intensity Level Selector (GymBook signature detail) -->
+          <div class="form-group">
+            <label class="field-label">Training Intensity</label>
+            <div class="intensity-picker">
+              <button type="button" class="intensity-btn" onclick="selectIntensity(this, 'Light (Form & Mobility)')">Light</button>
+              <button type="button" class="intensity-btn active" onclick="selectIntensity(this, 'Moderate (Conditioning)')">Moderate</button>
+              <button type="button" class="intensity-btn" onclick="selectIntensity(this, 'Max Effort (Heavy)')">Max Effort</button>
+            </div>
+            <input type="hidden" id="user-intensity" value="Moderate (Conditioning)">
+          </div>
+
+          <!-- Submit Button -->
+          <button type="submit" class="btn-gymbook-confirm">
+            <span>Confirm Class Pass</span> &rarr;
+          </button>
+        </form>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Bottom Section: Active Passes Matrix -->
+  <div class="my-bookings-section" id="passes">
+    <div class="section-header">
+      <div>
+        <h2 class="section-headline">Active Gym Passes</h2>
+        <p style="color: var(--text-muted); font-size: 13px;">Present your pass at the front desk QR scanner upon arrival</p>
+      </div>
+      <div style="color: var(--accent); font-family: var(--font-mono); font-size: 13px;" id="passes-counter">
+        2 Passes Active
+      </div>
+    </div>
+
+    <div class="bookings-grid" id="passes-grid">
+      <!-- Injected by simple JavaScript -->
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <p>Inspired by GymBook's minimalist workout tracking &bull; Built with clean beginner-friendly JavaScript</p>
+  </footer>
+
+  <!-- ============================================================
+       Simple Beginner-Friendly JavaScript
+       Easy variables, functions, for-loops, and localStorage
+       ============================================================ -->
+  <script>
+    // 1. Gym Classes Database with GymBook exercise muscle focus
+    var gymClasses = [
+      {
+        id: "gb-01",
+        name: "Sunrise Flow Yoga",
+        category: "Yoga",
+        targetMuscles: "Core, Spine, Hamstrings",
+        icon: "&#x1F9D8;",
+        instructor: "Priya Nair",
+        time: "06:30 AM",
+        days: "Mon / Wed / Fri",
+        duration: "50 mins",
+        spots: 14,
+        maxSpots: 20
+      },
+      {
+        id: "gb-02",
+        name: "CrossHIIT & Conditioning",
+        category: "Strength",
+        targetMuscles: "Quads, Delts, Chest",
+        icon: "&#x1F3CB;",
+        instructor: "Jonah Kim",
+        time: "06:00 PM",
+        days: "Tue / Thu",
+        duration: "45 mins",
+        spots: 5,
+        maxSpots: 16
+      },
+      {
+        id: "gb-03",
+        name: "Iron Kettlebell & Deadlift",
+        category: "Strength",
+        targetMuscles: "Glutes, Lats, Traps",
+        icon: "&#x1F525;",
+        instructor: "Marcus Reed",
+        time: "05:00 PM",
+        days: "Mon / Wed",
+        duration: "55 mins",
+        spots: 8,
+        maxSpots: 12
+      },
+      {
+        id: "gb-04",
+        name: "Pulse Spin & RPM Cycle",
+        category: "Cardio",
+        targetMuscles: "Calves, Quads, Cardio",
+        icon: "&#x1F6B4;",
+        instructor: "Lena Fischer",
+        time: "07:00 AM",
+        days: "Mon / Thu",
+        duration: "45 mins",
+        spots: 3,
+        maxSpots: 12
+      },
+      {
+        id: "gb-05",
+        name: "Zumba Beat Rhythm",
+        category: "Dance",
+        targetMuscles: "Full Body, Cardio",
+        icon: "&#x1F3B6;",
+        instructor: "Sophie Chan",
+        time: "07:00 PM",
+        days: "Wed / Fri",
+        duration: "60 mins",
+        spots: 18,
+        maxSpots: 25
+      }
+    ];
+
+    var selectedClassId = "gb-01";
+    var activeCategory = "All";
+
+    // 2. Render Classes to the screen
+    function renderClasses() {
+      var container = document.getElementById("classes-list");
+      container.innerHTML = "";
+
+      for (var i = 0; i < gymClasses.length; i++) {
+        var c = gymClasses[i];
+
+        // Category filter check
+        if (activeCategory !== "All" && c.category !== activeCategory) {
+          continue;
+        }
+
+        var isSelected = (c.id === selectedClassId);
+
+        var card = document.createElement("div");
+        card.className = "gymbook-card" + (isSelected ? " selected" : "");
+        card.setAttribute("onclick", "chooseClass('" + c.id + "')");
+
+        var isLowSpots = c.spots <= 5;
+
+        card.innerHTML = 
+          "<div class='muscle-badge'>" + c.icon + "</div>" +
+          "<div class='class-primary'>" +
+            "<div class='class-header'>" +
+              "<h3 class='class-title'>" + c.name + "</h3>" +
+              "<span class='target-pill'>" + c.category + "</span>" +
+            "</div>" +
+            "<div class='class-meta'>" +
+              "<span class='meta-item'>&#x1F464; " + c.instructor + "</span>" +
+              "<span class='meta-item'>&#x23F0; " + c.time + " (" + c.duration + ")</span>" +
+              "<span class='meta-item' style='color: var(--text-muted);'>&#x1F4AA; " + c.targetMuscles + "</span>" +
+            "</div>" +
+          "</div>" +
+          "<div class='class-action'>" +
+            "<div class='spots-text" + (isLowSpots ? " low" : "") + "'>" + c.spots + " spots left</div>" +
+            "<button type='button' class='btn-select-card'>" + (isSelected ? "Selected &#x2714;" : "Select") + "</button>" +
+          "</div>";
+
+        container.appendChild(card);
+      }
+    }
+
+    // 3. Category Filter
+    function filterClasses(category) {
+      activeCategory = category;
+
+      // Update button visual styles
+      var buttons = document.getElementById("filter-container").getElementsByClassName("filter-chip");
+      for (var i = 0; i < buttons.length; i++) {
+        buttons[i].classList.remove("active");
+        if (buttons[i].innerText.indexOf(category) !== -1 || (category === "All" && buttons[i].innerText === "All Workouts")) {
+          buttons[i].classList.add("active");
+        }
+      }
+
+      renderClasses();
+    }
+
+    // 4. Select a Class
+    function chooseClass(id) {
+      selectedClassId = id;
+      renderClasses();
+
+      // Find details and update preview box
+      var chosen = null;
+      for (var i = 0; i < gymClasses.length; i++) {
+        if (gymClasses[i].id === id) {
+          chosen = gymClasses[i];
+          break;
+        }
+      }
+
+      if (chosen) {
+        document.getElementById("input-class-id").value = chosen.id;
+        document.getElementById("disp-class-name").innerText = chosen.name;
+        document.getElementById("disp-class-time").innerText = chosen.time + " \u2022 " + chosen.days;
+      }
+    }
+
+    // 5. Training Intensity Selector
+    function selectIntensity(btn, value) {
+      var allBtns = document.getElementsByClassName("intensity-btn");
+      for (var i = 0; i < allBtns.length; i++) {
+        allBtns[i].classList.remove("active");
+      }
+      btn.classList.add("active");
+      document.getElementById("user-intensity").value = value;
+    }
+
+    // 6. Get Passes from LocalStorage
+    function getPasses() {
+      var data = localStorage.getItem("gymbook_passes");
+      if (data) {
+        return JSON.parse(data);
+      } else {
+        // Initial beginner sample passes
+        return [
+          {
+            id: 101,
+            name: "Marcus Vance",
+            phone: "+855 12 888 999",
+            className: "CrossHIIT & Conditioning",
+            instructor: "Jonah Kim",
+            time: "06:00 PM",
+            date: "2026-09-17",
+            intensity: "Max Effort (Heavy)"
+          },
+          {
+            id: 102,
+            name: "Sarah Lin",
+            phone: "+855 99 222 333",
+            className: "Sunrise Flow Yoga",
+            instructor: "Priya Nair",
+            time: "06:30 AM",
+            date: "2026-09-18",
+            intensity: "Light (Form & Mobility)"
+          }
+        ];
+      }
+    }
+
+    // 7. Render Active Passes
+    function renderPasses() {
+      var passes = getPasses();
+      var container = document.getElementById("passes-grid");
+      container.innerHTML = "";
+
+      document.getElementById("passes-counter").innerText = passes.length + " Passes Active";
+
+      if (passes.length === 0) {
+        container.innerHTML = "<div style='color: var(--text-muted); font-size: 14px; padding: 20px; background: var(--bg-surface); border-radius: 12px; grid-column: 1/-1;'>No active bookings found. Select a class above to reserve your station.</div>";
+        return;
+      }
+
+      for (var i = 0; i < passes.length; i++) {
+        var p = passes[i];
+        var card = document.createElement("div");
+        card.className = "booking-pass-card";
+
+        card.innerHTML = 
+          "<div>" +
+            "<div class='pass-date'>DATE: " + p.date + " \u2022 " + p.time + "</div>" +
+            "<h3 class='pass-name'>" + p.className + "</h3>" +
+          "</div>" +
+          "<div class='pass-details'>" +
+            "<div><strong>Member:</strong> " + p.name + "</div>" +
+            "<div><strong>Coach:</strong> " + p.instructor + "</div>" +
+            "<div><strong>Intensity:</strong> " + p.intensity + "</div>" +
+          "</div>" +
+          "<div class='pass-footer'>" +
+            "<span style='font-size: 11px; color: var(--text-muted); font-family: var(--font-mono);'>PASS #" + p.id + "</span>" +
+            "<button class='btn-cancel-pass' onclick='cancelPass(" + p.id + ")'>Cancel Pass</button>" +
+          "</div>";
+
+        container.appendChild(card);
+      }
+    }
+
+    // 8. Submit Form & Book Pass
+    function submitGymBook(event) {
+      event.preventDefault();
+
+      var name = document.getElementById("user-name").value.trim();
+      var phone = document.getElementById("user-phone").value.trim();
+      var date = document.getElementById("user-date").value;
+      var intensity = document.getElementById("user-intensity").value;
+
+      // Find chosen class info
+      var chosen = null;
+      for (var i = 0; i < gymClasses.length; i++) {
+        if (gymClasses[i].id === selectedClassId) {
+          chosen = gymClasses[i];
+          break;
+        }
+      }
+
+      if (!chosen) {
+        alert("Please pick a class!");
+        return;
+      }
+
+      // Create new pass record
+      var newPass = {
+        id: Math.floor(1000 + Math.random() * 9000), // 4-digit pass number
+        name: name,
+        phone: phone,
+        className: chosen.name,
+        instructor: chosen.instructor,
+        time: chosen.time,
+        date: date,
+        intensity: intensity
+      };
+
+      // Save to localStorage
+      var allPasses = getPasses();
+      allPasses.unshift(newPass); // add to top
+      localStorage.setItem("gymbook_passes", JSON.stringify(allPasses));
+
+      // Show sleek confirmation toast
+      var toast = document.getElementById("booking-toast");
+      document.getElementById("toast-message").innerText = "Spot confirmed for " + chosen.name + " on " + date + ".";
+      toast.style.display = "block";
+      setTimeout(function() {
+        toast.style.display = "none";
+      }, 5000);
+
+      // Reset form
+      document.getElementById("user-name").value = "";
+      document.getElementById("user-phone").value = "";
+
+      // Re-render passes
+      renderPasses();
+
+      // Smooth scroll to passes
+      document.getElementById("passes").scrollIntoView({ behavior: "smooth" });
+    }
+
+    // 9. Cancel Pass
+    function cancelPass(passId) {
+      if (confirm("Are you sure you want to cancel pass #" + passId + "?")) {
+        var current = getPasses();
+        var updated = [];
+        for (var i = 0; i < current.length; i++) {
+          if (current[i].id !== passId) {
+            updated.push(current[i]);
+          }
+        }
+        localStorage.setItem("gymbook_passes", JSON.stringify(updated));
+        renderPasses();
+      }
+    }
+
+    // Initialize Page
+    window.onload = function() {
+      chooseClass(selectedClassId);
+      renderClasses();
+      renderPasses();
+
+      // Default date to tomorrow
+      var tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      var tomorrowStr = tomorrow.toISOString().split("T")[0];
+      document.getElementById("user-date").value = tomorrowStr;
+      document.getElementById("user-date").setAttribute("min", new Date().toISOString().split("T")[0]);
+    };
+  </script>
+</body>
+</html>

@@ -309,6 +309,7 @@ const NAV_SECTIONS = [
     { key:'memberships', href:'memberships.html', label:'Memberships', roles:['admin','receptionist'], icon:'card' },
     { key:'attendance', href:'attendance.html', label:'Attendance', roles:['admin','receptionist','trainer'], icon:'check' },
     { key:'classes', href:'classes.html', label:'Classes', roles:['admin','receptionist','trainer'], icon:'calendar' },
+    { key:'booking', href:'booking.html', label:'Public Booking Page', roles:['admin','receptionist','trainer'], icon:'calendar' },
     { key:'workouts', href:'workouts.html', label:'Workout Plans', roles:['admin','trainer'], icon:'dumbbell' },
     { key:'nutrition', href:'nutrition.html', label:'Nutrition Plans', roles:['admin','trainer'], icon:'leaf' },
     { key:'equipment', href:'equipment.html', label:'Equipment', roles:['admin','receptionist'], icon:'wrench' },
@@ -319,7 +320,6 @@ const NAV_SECTIONS = [
     { key:'announcements', href:'announcements.html', label:'Announcements', roles:['admin','receptionist'], icon:'megaphone' },
     { key:'notifications', href:'notifications.html', label:'Notifications', roles:['admin','receptionist','trainer'], icon:'bell' },
     { key:'settings', href:'settings.html', label:'Settings', roles:['admin'], icon:'settings' },
-    { key:'assignment', href:'assignment.html', label:'Teacher Rubric & PHP', roles:['admin','receptionist','trainer'], icon:'book' },
   ]},
 ];
 
